@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e8]:
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - generic [ref=e13]: ✨
+            - heading "AI 学习助手" [level=2] [ref=e14]
+            - generic [ref=e15]: ✨
+          - text: 把任务和概念交给 AI，让学习变得更有趣 🌸
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - button "二次元粉色" [ref=e18] [cursor=pointer]
+            - button "暗夜玻璃" [active] [pressed] [ref=e19] [cursor=pointer]
+            - button "清新自然" [ref=e20] [cursor=pointer]
+          - button "setting" [ref=e21] [cursor=pointer]:
+            - img "setting" [ref=e23]:
+              - img [ref=e24]
+      - radiogroup "segmented control" [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30] [cursor=pointer]:
+            - radio "bulb 概念拆解" [checked]
+            - generic [ref=e32]:
+              - img "bulb" [ref=e33]:
+                - img [ref=e34]
+              - generic [ref=e36]: 概念拆解
+          - generic [ref=e37] [cursor=pointer]:
+            - radio "appstore 任务拆解"
+            - generic [ref=e39]:
+              - img "appstore" [ref=e40]:
+                - img [ref=e41]
+              - generic [ref=e43]: 任务拆解
+  - main [ref=e44]:
+    - generic [ref=e49]:
+      - textbox "输入要拆解的概念，例如：机器学习、操作系统、数据结构..." [ref=e51]
+      - button "send 开始拆解" [disabled] [ref=e54]:
+        - generic:
+          - img "send":
+            - img
+        - generic: 开始拆解
+      - generic [ref=e56]: 💡 提示：按 Ctrl/Cmd + Enter 快速提交
+  - contentinfo [ref=e57]:
+    - generic [ref=e58]: Made with 💝 by AI · 让每一天都充满魔法 ✨

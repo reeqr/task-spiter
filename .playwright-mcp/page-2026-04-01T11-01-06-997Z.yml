@@ -1,0 +1,98 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e8]:
+        - generic [ref=e10]:
+          - generic [ref=e11]:
+            - generic [ref=e12]:
+              - generic [ref=e13]: ✨
+              - heading "AI 学习助手" [level=2] [ref=e14]
+              - generic [ref=e15]: ✨
+            - text: 把任务和概念交给 AI，让学习变得更有趣 🌸
+          - generic [ref=e16]:
+            - generic [ref=e17]:
+              - button "二次元粉色" [pressed] [ref=e18] [cursor=pointer]
+              - button "暗夜玻璃" [ref=e19] [cursor=pointer]
+              - button "清新自然" [ref=e20] [cursor=pointer]
+            - button "setting" [ref=e21] [cursor=pointer]:
+              - img "setting" [ref=e23]:
+                - img [ref=e24]
+        - radiogroup "segmented control" [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30] [cursor=pointer]:
+              - radio "bulb 概念拆解" [checked]
+              - generic [ref=e32]:
+                - img "bulb" [ref=e33]:
+                  - img [ref=e34]
+                - generic [ref=e36]: 概念拆解
+            - generic [ref=e37] [cursor=pointer]:
+              - radio "appstore 任务拆解"
+              - generic [ref=e39]:
+                - img "appstore" [ref=e40]:
+                  - img [ref=e41]
+                - generic [ref=e43]: 任务拆解
+    - main [ref=e44]:
+      - generic [ref=e49]:
+        - textbox "输入要拆解的概念，例如：机器学习、操作系统、数据结构..." [ref=e51]
+        - button "send 开始拆解" [disabled] [ref=e54]:
+          - generic:
+            - img "send":
+              - img
+          - generic: 开始拆解
+        - generic [ref=e56]: 💡 提示：按 Ctrl/Cmd + Enter 快速提交
+    - contentinfo [ref=e57]:
+      - generic [ref=e58]: Made with 💝 by AI · 让每一天都充满魔法 ✨
+  - generic [ref=e59]:
+    - dialog "🤖 AI 模型管理":
+      - generic [ref=e60]:
+        - button "Close" [active] [ref=e61] [cursor=pointer]:
+          - generic "Close" [ref=e62]:
+            - img "close" [ref=e63]:
+              - img [ref=e64]
+        - generic [ref=e68]:
+          - generic [ref=e69]: 🤖
+          - heading "AI 模型管理" [level=4] [ref=e71]
+        - generic [ref=e73]:
+          - generic [ref=e77]:
+            - generic [ref=e79]:
+              - strong [ref=e81]: ✨ 当前使用模型
+              - generic [ref=e82]: 使用中
+            - generic [ref=e85]:
+              - heading "智谱 GLM-5 (推荐)" [level=5] [ref=e86]
+              - text: glm-5
+          - generic [ref=e88]:
+            - generic [ref=e89]:
+              - strong [ref=e91]: 🏢 提供商 (1)
+              - button "plus 添加提供商" [ref=e92] [cursor=pointer]:
+                - img "plus" [ref=e94]:
+                  - img [ref=e95]
+                - generic [ref=e98]: 添加提供商
+            - button "collapsed 🔮 智谱 AI 1 个模型" [ref=e101] [cursor=pointer]:
+              - img "collapsed" [ref=e103]:
+                - img [ref=e104]
+              - generic [ref=e108]:
+                - generic [ref=e109]: 🔮
+                - strong [ref=e112]: 智谱 AI
+                - generic [ref=e114]: 1 个模型
+          - separator [ref=e116]
+          - generic [ref=e120]:
+            - strong [ref=e123]: 🧠 提示词模板配置
+            - generic [ref=e125]: "支持变量：`{{concept}}`、`{{term}}`、`{{termDefinition}}`、`{{targetConcept}}`、`{{existingTerminology}}`、`{{existingKnowledgePoints}}`"
+            - generic [ref=e127]:
+              - strong [ref=e129]: 概念拆解提示词模板
+              - textbox [ref=e130]: "请分析以下概念，构建尽可能完整且不重复的术语体系。 概念：{{concept}} 以下是已经拆解过的内容（请避免重复）： - 已有术语：{{existingTerminology}} - 已有考点：{{existingKnowledgePoints}} 要求： 1. 只输出专业术语列表，不要单独输出知识考点列表 2. 提取相关的专业术语，每个术语包含： - name: 术语名称（简洁明确） - definition: 术语定义（建议 28-50 字，尽量单句；在解释术语本身的同时，明确其与“{{concept}}”的关系或作用） 3. 术语集合要尽可能覆盖全面，做到不重不漏：避免同义重复，也避免明显关键术语缺失 4. 新输出内容不得与“已经拆解过的内容”重复或仅改写措辞 5. 避免空泛描述，优先使用“用于解释/刻画/分析 {{concept}} 的……”这类关联表达 6. 使用中文回答 请以 JSON 格式返回，格式如下： { \"terminology\": [ { \"name\": \"术语名称\", \"definition\": \"术语定义\" } ] }"
+            - generic [ref=e132]:
+              - strong [ref=e134]: 考点讲解提示词模板
+              - textbox [ref=e135]: "什么是{{term}}"
+            - generic [ref=e137]:
+              - button "保存模板" [ref=e139] [cursor=pointer]:
+                - generic [ref=e140]: 保存模板
+              - button "恢复默认" [ref=e142] [cursor=pointer]:
+                - generic [ref=e143]: 恢复默认
+          - generic [ref=e147]:
+            - strong [ref=e150]: 💡 使用说明
+            - list [ref=e152]:
+              - listitem [ref=e153]: 先添加提供商并配置 API Key，再为提供商添加模型
+              - listitem [ref=e154]: 可以手动输入任意模型代码来添加模型
+              - listitem [ref=e155]: API Key 仅保存在本地浏览器中，安全可靠
+              - listitem [ref=e156]: 可以为同一提供商添加多个模型

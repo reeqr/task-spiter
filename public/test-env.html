@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>环境变量测试</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #FFF5F8 0%, #F5F0FF 100%);
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 16px rgba(255, 133, 162, 0.1);
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #FF85A2;
+      margin-bottom: 20px;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .success {
+      background: #98D8C8;
+      color: white;
+    }
+    .error {
+      background: #FF85A2;
+      color: white;
+    }
+    .info {
+      background: #B19CD9;
+      color: white;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔑 环境变量测试页面</h1>
+    <div id="results"></div>
+  </div>
+
+  <script type="module">
+    const results = document.getElementById('results');
+
+    function addResult(type, message) {
+      const div = document.createElement('div');
+      div.className = `status ${type}`;
+      div.innerHTML = message;
+      results.appendChild(div);
+    }
+
+    // 测试 import.meta.env
+    addResult('info', '<strong>正在测试环境变量...</strong>');
+
+    try {
+      // 检查 import.meta.env 是否存在
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        addResult('success', '✅ <code>import.meta.env</code> 可用');
+      } else {
+        addResult('error', '❌ <code>import.meta.env</code> 不可用');
+      }
+
+      // 检查 VITE_ZHIPU_API_KEY
+      const apiKey = import.meta.env.VITE_ZHIPU_API_KEY;
+
+      if (apiKey) {
+        addResult('success', `✅ <code>VITE_ZHIPU_API_KEY</code> 已设置`);
+        addResult('info', `Key 长度: <code>${apiKey.length}</code>`);
+        addResult('info', `Key 前缀: <code>${apiKey.substring(0, 10)}...</code>`);
+        addResult('info', `完整 Key: <code>${apiKey}</code>`);
+      } else {
+        addResult('error', `❌ <code>VITE_ZHIPU_API_KEY</code> 未设置`);
+        addResult('info', `<code>import.meta.env</code> 的所有键: <code>${Object.keys(import.meta.env).join(', ')}</code>`);
+      }
+
+      // 测试 API 调用
+      if (apiKey) {
+        addResult('info', '<strong>正在测试 API 调用...</strong>');
+
+        fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'glm-4-flash',
+            messages: [{
+              role: 'user',
+              content: '你好，请回复"测试成功"'
+            }],
+            max_tokens: 100,
+          }),
+        })
+        .then(response => {
+          if (response.ok) {
+            addResult('success', `✅ API 调用成功 (状态码: ${response.status})`);
+            return response.json();
+          } else {
+            addResult('error', `❌ API 调用失败 (状态码: ${response.status})`);
+            return response.text().then(text => {
+              addResult('error', `错误信息: <code>${text}</code>`);
+            });
+          }
+        })
+        .then(data => {
+          if (data && data.choices) {
+            addResult('success', `✅ API 响应: <code>${data.choices[0].message.content}</code>`);
+          }
+        })
+        .catch(error => {
+          addResult('error', `❌ API 调用异常: <code>${error.message}</code>`);
+        });
+      }
+
+    } catch (error) {
+      addResult('error', `❌ 测试失败: <code>${error.message}</code>`);
+    }
+  </script>
+</body>
+</html>

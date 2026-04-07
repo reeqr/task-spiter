@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Env Test</title></head>
+<body>
+<h1>环境变量测试</h1>
+<div id="result"></div>
+<script type="module">
+  const result = document.getElementById('result');
+  result.innerHTML = '<p>VITE_ZHIPU_API_KEY: ' + (import.meta.env.VITE_ZHIPU_API_KEY || '未设置') + '</p>';
+  console.log('环境变量:', import.meta.env.VITE_ZHIPU_API_KEY);
+</script>
+</body>
+</html>
