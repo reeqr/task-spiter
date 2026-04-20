@@ -61,7 +61,7 @@ const STREAM_PROVIDER_SUPPORT: Partial<Record<AIProvider, boolean>> = {
 
 const runtimeUnsupportedProviders = new Set<AIProvider>();
 const runtimeUnsupportedStreamProviders = new Set<AIProvider>();
-const FIXED_MODEL_TEMPERATURE = 0.2;
+const FIXED_MODEL_TEMPERATURE = 0.1;
 
 // 当前使用的模型配置
 let currentModel: ModelConfig | null = null;
