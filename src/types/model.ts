@@ -166,7 +166,7 @@ export const PREDEFINED_MODELS: Record<string, Omit<AIModel, 'apiKey'>> = {
     maxTokens: 65536,
     temperature: 1.0,
     supportsThinking: true,
-    thinkingEnabled: true,
+    thinkingEnabled: false,
   },
   'zhipu-glm-4-flash': {
     id: 'zhipu-glm-4-flash',
