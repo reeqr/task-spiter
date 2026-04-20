@@ -46,7 +46,7 @@ export function ConceptInput({ onSubmit, isLoading = false }: ConceptInputProps)
         value={concept}
         onChange={(e) => setConcept(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="输入要拆解的概念或术语，例如：机器学习、高数..."
+        placeholder="输入要拆解的概念或术语，例如：考研高数..."
         autoSize={{ minRows: 3, maxRows: 6 }}
         disabled={isLoading}
         className="!text-base"

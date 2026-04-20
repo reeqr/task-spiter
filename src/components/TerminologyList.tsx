@@ -10,6 +10,7 @@ import {
   ThunderboltOutlined,
   LoadingOutlined,
   QuestionCircleOutlined,
+  BulbOutlined,
 } from '@ant-design/icons';
 import type { Term } from '../types/concept';
 import { KnowledgePointList } from './KnowledgePointList';
@@ -22,7 +23,9 @@ interface TerminologyListProps {
   onBreakdown?: (termId: string) => void; // 处理继续拆解
   onToggleExpand?: (termId: string) => void; // 处理展开/收起
   onQueryKnowledge?: (termId: string, termName: string, termDefinition?: string) => void | Promise<void>; // 处理查询考点
+  onQueryExamAngles?: (termId: string, termName: string, termDefinition?: string) => void | Promise<void>; // 处理查询出题角度
   queryingKnowledgeTermId?: string | null;
+  queryingExamAngleTermId?: string | null;
 }
 
 export function TerminologyList({
@@ -31,7 +34,9 @@ export function TerminologyList({
   onBreakdown,
   onToggleExpand,
   onQueryKnowledge,
+  onQueryExamAngles,
   queryingKnowledgeTermId = null,
+  queryingExamAngleTermId = null,
 }: TerminologyListProps) {
   // 空状态处理
   if (terminology.length === 0) {
@@ -64,6 +69,7 @@ export function TerminologyList({
           term.children.knowledgePoints.length > 0
         ));
         const isQueryingKnowledge = queryingKnowledgeTermId === term.id;
+        const isQueryingExamAngle = queryingExamAngleTermId === term.id;
 
         return (
           <Card
@@ -114,12 +120,24 @@ export function TerminologyList({
                     <Button
                       size="small"
                       icon={isQueryingKnowledge ? <LoadingOutlined /> : <QuestionCircleOutlined />}
-                    onClick={() => onQueryKnowledge(term.id, term.name, term.definition)}
+                      onClick={() => onQueryKnowledge(term.id, term.name, term.definition)}
                       loading={isQueryingKnowledge}
                       disabled={isQueryingKnowledge}
                       className="!rounded-full"
                     >
                       {isQueryingKnowledge ? '查询中' : '解释'}
+                    </Button>
+                  )}
+                  {onQueryExamAngles && (
+                    <Button
+                      size="small"
+                      icon={isQueryingExamAngle ? <LoadingOutlined /> : <BulbOutlined />}
+                      onClick={() => onQueryExamAngles(term.id, term.name, term.definition)}
+                      loading={isQueryingExamAngle}
+                      disabled={isQueryingExamAngle}
+                      className="!rounded-full"
+                    >
+                      {isQueryingExamAngle ? '查询中' : '出题角度'}
                     </Button>
                   )}
                   {onBreakdown && (
@@ -128,7 +146,7 @@ export function TerminologyList({
                       size="small"
                       icon={term.isBreakingDown ? <LoadingOutlined /> : <ThunderboltOutlined />}
                       onClick={() => onBreakdown(term.id)}
-                      disabled={term.isBreakingDown || hasChildren || isQueryingKnowledge}
+                      disabled={term.isBreakingDown || hasChildren || isQueryingKnowledge || isQueryingExamAngle}
                       className="!rounded-full"
                       style={{
                         background: 'linear-gradient(135deg, #B19CD9 0%, #87CEEB 100%)',
@@ -153,7 +171,9 @@ export function TerminologyList({
                       onBreakdown={onBreakdown}
                       onToggleExpand={onToggleExpand}
                       onQueryKnowledge={onQueryKnowledge}
+                      onQueryExamAngles={onQueryExamAngles}
                       queryingKnowledgeTermId={queryingKnowledgeTermId}
+                      queryingExamAngleTermId={queryingExamAngleTermId}
                     />
                   )}
 

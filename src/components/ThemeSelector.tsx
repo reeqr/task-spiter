@@ -4,12 +4,14 @@ import { ALL_THEMES } from '../themes';
 interface ThemeSelectorProps {
   currentThemeId: string;
   onThemeChange: (id: string) => void;
+  hiddenThemeIds?: string[];
 }
 
-export function ThemeSelector({ currentThemeId, onThemeChange }: ThemeSelectorProps) {
+export function ThemeSelector({ currentThemeId, onThemeChange, hiddenThemeIds = [] }: ThemeSelectorProps) {
+  const visibleThemes = ALL_THEMES.filter((theme) => !hiddenThemeIds.includes(theme.id));
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      {ALL_THEMES.map(theme => {
+      {visibleThemes.map(theme => {
         const isActive = theme.id === currentThemeId;
         return (
           <Tooltip key={theme.id} title={`${theme.emoji} ${theme.name}`} placement="bottom">

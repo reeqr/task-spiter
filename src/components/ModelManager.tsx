@@ -36,6 +36,11 @@ import {
   DEFAULT_PROMPT_TEMPLATES,
   type PromptTemplates,
 } from '../utils/promptConfig';
+import {
+  loadWebSearchConfig,
+  saveWebSearchConfig,
+  type WebSearchConfig,
+} from '../utils/api';
 
 const { Text, Title, Paragraph } = Typography;
 const { Panel } = Collapse;
@@ -72,10 +77,12 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
   const [modelCode, setModelCode] = useState('');
   const [modelName, setModelName] = useState('');
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(loadPromptTemplates());
+  const [webSearchConfig, setWebSearchConfig] = useState<WebSearchConfig>(loadWebSearchConfig());
 
   useEffect(() => {
     if (visible) {
       setPromptTemplates(loadPromptTemplates());
+      setWebSearchConfig(loadWebSearchConfig());
     }
   }, [visible]);
 
@@ -210,6 +217,11 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
     message.success('提示词模板已恢复默认');
   };
 
+  const handleSaveWebSearchConfig = () => {
+    saveWebSearchConfig(webSearchConfig);
+    message.success('联网搜索配置已保存');
+  };
+
   return (
     <Modal
       open={visible}
@@ -329,8 +341,8 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
                         size="small"
                         className="!rounded-lg"
                         style={{
-                          background: 'var(--gradient-primary)',
-                          borderColor: 'var(--anime-yellow)',
+                          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF5F8 50%, #F5F0FF 100%)',
+                          borderColor: 'rgba(255, 133, 162, 0.25)',
                           borderWidth: '1px',
                         }}
                       >
@@ -399,7 +411,7 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
                                     currentModelId === model.id ? 'var(--anime-pink)' : 'var(--card-border)',
                                   background:
                                     currentModelId === model.id
-                                      ? 'var(--gradient-primary)'
+                                      ? 'linear-gradient(135deg, #FFFFFF 0%, #FFF5F8 50%, #F5F0FF 100%)'
                                       : '#FFF',
                                   borderWidth: currentModelId === model.id ? '2px' : '1px',
                                 }}
@@ -691,6 +703,111 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
           </Card>
         )}
 
+        <Card
+          className="!rounded-xl"
+          style={{
+            background: 'linear-gradient(135deg, #F4FFFC 0%, #FFF 100%)',
+            border: '2px solid #98D8C8',
+          }}
+          styles={{ body: { padding: '16px' } }}
+        >
+          <Space direction="vertical" size="small" className="w-full">
+            <div className="flex items-center justify-between">
+              <Text strong style={{ color: '#2F8F83' }}>🌐 联网搜索</Text>
+              <Switch
+                checked={webSearchConfig.enabled}
+                onChange={(checked) => {
+                  const next = { ...webSearchConfig, enabled: checked };
+                  setWebSearchConfig(next);
+                  saveWebSearchConfig(next);
+                  message.success(checked ? '联网搜索已开启' : '联网搜索已关闭');
+                }}
+              />
+            </div>
+            <Text type="secondary">开启后所有 AI 请求优先尝试联网；关闭后保持本地模型回答。</Text>
+            <Collapse bordered={false} className="!bg-transparent" items={[
+              {
+                key: 'web-search-advanced',
+                label: '高级配置（可选）',
+                children: (
+                  <Space direction="vertical" size="middle" className="w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Text className="block mb-1">搜索引擎</Text>
+                        <Select
+                          value={webSearchConfig.searchEngine}
+                          options={[
+                            { value: 'search_pro', label: 'search_pro' },
+                            { value: 'search_std', label: 'search_std' },
+                          ]}
+                          onChange={(value) => setWebSearchConfig((prev) => ({ ...prev, searchEngine: value }))}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <Text className="block mb-1">结果条数（1-50）</Text>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={webSearchConfig.count}
+                          onChange={(e) => setWebSearchConfig((prev) => ({ ...prev, count: Number(e.target.value || 1) }))}
+                        />
+                      </div>
+                      <div>
+                        <Text className="block mb-1">时间范围</Text>
+                        <Select
+                          value={webSearchConfig.searchRecencyFilter}
+                          options={[
+                            { value: 'noLimit', label: '不限' },
+                            { value: '1d', label: '1天内' },
+                            { value: '1w', label: '1周内' },
+                            { value: '1m', label: '1月内' },
+                            { value: '1y', label: '1年内' },
+                          ]}
+                          onChange={(value) => setWebSearchConfig((prev) => ({ ...prev, searchRecencyFilter: value }))}
+                          className="w-full"
+                        />
+                      </div>
+                      <div>
+                        <Text className="block mb-1">内容粒度</Text>
+                        <Select
+                          value={webSearchConfig.contentSize}
+                          options={[
+                            { value: 'low', label: 'low' },
+                            { value: 'medium', label: 'medium' },
+                            { value: 'high', label: 'high' },
+                          ]}
+                          onChange={(value) => setWebSearchConfig((prev) => ({ ...prev, contentSize: value }))}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Text className="block mb-1">域名过滤（可选）</Text>
+                      <Input
+                        value={webSearchConfig.searchDomainFilter}
+                        placeholder="例如：www.sohu.com"
+                        onChange={(e) => setWebSearchConfig((prev) => ({ ...prev, searchDomainFilter: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Text className="block mb-1">搜索摘要提示词（可选）</Text>
+                      <TextArea
+                        value={webSearchConfig.searchPrompt}
+                        onChange={(e) => setWebSearchConfig((prev) => ({ ...prev, searchPrompt: e.target.value }))}
+                        autoSize={{ minRows: 2, maxRows: 6 }}
+                        placeholder="例如：请按重要性总结搜索结果并标注来源日期"
+                      />
+                    </div>
+                    <Button type="primary" onClick={handleSaveWebSearchConfig}>保存高级配置</Button>
+                  </Space>
+                ),
+              },
+            ]} />
+          </Space>
+        </Card>
+
         <Divider style={{ margin: '8px 0' }} />
 
         <Card
@@ -706,34 +823,56 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
               🧠 提示词模板配置
             </Text>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              支持变量：`{'{{concept}}'}`、`{'{{term}}'}`、`{'{{termDefinition}}'}`、`{'{{targetConcept}}'}`、`{'{{existingTerminology}}'}`、`{'{{existingKnowledgePoints}}'}`
+              支持变量：`{'{{concept}}'}`、`{'{{term}}'}`、`{'{{termDefinition}}'}`、`{'{{targetConcept}}'}`、`{'{{existingTerminology}}'}`、`{'{{existingKnowledgePoints}}'}`、`{'{{chatHistory}}'}`、`{'{{followupQuestion}}'}`
             </Paragraph>
 
-            <div>
-              <Text strong className="block mb-2" style={{ fontSize: '14px' }}>
-                概念拆解提示词模板
-              </Text>
-              <TextArea
-                value={promptTemplates.conceptBreakdown}
-                onChange={(e) =>
-                  setPromptTemplates((prev) => ({ ...prev, conceptBreakdown: e.target.value }))
-                }
-                autoSize={{ minRows: 8, maxRows: 16 }}
-              />
-            </div>
-
-            <div>
-              <Text strong className="block mb-2" style={{ fontSize: '14px' }}>
-                考点讲解提示词模板
-              </Text>
-              <TextArea
-                value={promptTemplates.knowledgeQuery}
-                onChange={(e) =>
-                  setPromptTemplates((prev) => ({ ...prev, knowledgeQuery: e.target.value }))
-                }
-                autoSize={{ minRows: 8, maxRows: 16 }}
-              />
-            </div>
+            <Collapse accordion bordered={false} className="!bg-transparent">
+              <Panel header="概念拆解提示词模板" key="conceptBreakdown">
+                <TextArea
+                  value={promptTemplates.conceptBreakdown}
+                  onChange={(e) =>
+                    setPromptTemplates((prev) => ({ ...prev, conceptBreakdown: e.target.value }))
+                  }
+                  autoSize={{ minRows: 8, maxRows: 16 }}
+                />
+              </Panel>
+              <Panel header="解释提示词模板" key="knowledgeQuery">
+                <TextArea
+                  value={promptTemplates.knowledgeQuery}
+                  onChange={(e) =>
+                    setPromptTemplates((prev) => ({ ...prev, knowledgeQuery: e.target.value }))
+                  }
+                  autoSize={{ minRows: 6, maxRows: 14 }}
+                />
+              </Panel>
+              <Panel header="出题角度提示词模板" key="examAngleQuery">
+                <TextArea
+                  value={promptTemplates.examAngleQuery}
+                  onChange={(e) =>
+                    setPromptTemplates((prev) => ({ ...prev, examAngleQuery: e.target.value }))
+                  }
+                  autoSize={{ minRows: 6, maxRows: 14 }}
+                />
+              </Panel>
+              <Panel header="解释追问提示词模板" key="knowledgeFollowupQuery">
+                <TextArea
+                  value={promptTemplates.knowledgeFollowupQuery}
+                  onChange={(e) =>
+                    setPromptTemplates((prev) => ({ ...prev, knowledgeFollowupQuery: e.target.value }))
+                  }
+                  autoSize={{ minRows: 6, maxRows: 14 }}
+                />
+              </Panel>
+              <Panel header="出题角度追问提示词模板" key="examAngleFollowupQuery">
+                <TextArea
+                  value={promptTemplates.examAngleFollowupQuery}
+                  onChange={(e) =>
+                    setPromptTemplates((prev) => ({ ...prev, examAngleFollowupQuery: e.target.value }))
+                  }
+                  autoSize={{ minRows: 6, maxRows: 14 }}
+                />
+              </Panel>
+            </Collapse>
 
             <Space>
               <Button type="primary" onClick={handleSavePrompts}>

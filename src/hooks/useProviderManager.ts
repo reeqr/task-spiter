@@ -145,7 +145,7 @@ export function useProviderManager() {
       maxTokens: 65536,
       temperature: 1.0,
       supportsThinking: true,
-      thinkingEnabled: false,
+      thinkingEnabled: true,
     };
 
     // 添加提供商和模型

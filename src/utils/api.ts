@@ -25,8 +25,46 @@ interface ModelConfig extends Omit<AIModel, 'providerId'> {
   // thinkingEnabled: 是否用户启用了思考模式
 }
 
+export interface QuerySource {
+  title?: string;
+  url: string;
+  publishedAt?: string;
+}
+
+export interface WebSearchConfig {
+  enabled: boolean;
+  searchEngine: 'search_std' | 'search_pro';
+  count: number;
+  searchDomainFilter: string;
+  searchRecencyFilter: 'noLimit' | '1d' | '1w' | '1m' | '1y';
+  contentSize: 'low' | 'medium' | 'high';
+  searchPrompt: string;
+}
+
+const WEB_SEARCH_CONFIG_KEY = 'task_spiter_web_search_config_v1';
+const DEFAULT_WEB_SEARCH_CONFIG: WebSearchConfig = {
+  enabled: false,
+  searchEngine: 'search_pro',
+  count: 5,
+  searchDomainFilter: '',
+  searchRecencyFilter: 'noLimit',
+  contentSize: 'high',
+  searchPrompt: '',
+};
+
+const WEB_SEARCH_PROVIDER_SUPPORT: Partial<Record<AIProvider, boolean>> = {
+  zhipu: true,
+};
+const STREAM_PROVIDER_SUPPORT: Partial<Record<AIProvider, boolean>> = {
+  zhipu: true,
+};
+
+const runtimeUnsupportedProviders = new Set<AIProvider>();
+const runtimeUnsupportedStreamProviders = new Set<AIProvider>();
+
 // 当前使用的模型配置
 let currentModel: ModelConfig | null = null;
+let webSearchConfigCache: WebSearchConfig | null = null;
 
 /**
  * 初始化默认模型（向后兼容）
@@ -80,6 +118,54 @@ export function getCurrentModel(): ModelConfig | null {
   return currentModel;
 }
 
+export function loadWebSearchConfig(): WebSearchConfig {
+  if (typeof window === 'undefined') return { ...DEFAULT_WEB_SEARCH_CONFIG };
+  try {
+    const stored = localStorage.getItem(WEB_SEARCH_CONFIG_KEY);
+    if (!stored) return { ...DEFAULT_WEB_SEARCH_CONFIG };
+    const parsed = JSON.parse(stored) as Partial<WebSearchConfig>;
+    return {
+      enabled: !!parsed.enabled,
+      searchEngine: parsed.searchEngine === 'search_std' ? 'search_std' : 'search_pro',
+      count: Math.min(50, Math.max(1, Number(parsed.count) || DEFAULT_WEB_SEARCH_CONFIG.count)),
+      searchDomainFilter: String(parsed.searchDomainFilter || '').trim(),
+      searchRecencyFilter: ['noLimit', '1d', '1w', '1m', '1y'].includes(String(parsed.searchRecencyFilter))
+        ? (parsed.searchRecencyFilter as WebSearchConfig['searchRecencyFilter'])
+        : 'noLimit',
+      contentSize: ['low', 'medium', 'high'].includes(String(parsed.contentSize))
+        ? (parsed.contentSize as WebSearchConfig['contentSize'])
+        : 'high',
+      searchPrompt: String(parsed.searchPrompt || '').trim(),
+    };
+  } catch {
+    return { ...DEFAULT_WEB_SEARCH_CONFIG };
+  }
+}
+
+export function saveWebSearchConfig(config: WebSearchConfig) {
+  if (typeof window === 'undefined') return;
+  const normalized: WebSearchConfig = {
+    enabled: !!config.enabled,
+    searchEngine: config.searchEngine === 'search_std' ? 'search_std' : 'search_pro',
+    count: Math.min(50, Math.max(1, Number(config.count) || DEFAULT_WEB_SEARCH_CONFIG.count)),
+    searchDomainFilter: String(config.searchDomainFilter || '').trim(),
+    searchRecencyFilter: ['noLimit', '1d', '1w', '1m', '1y'].includes(String(config.searchRecencyFilter))
+      ? config.searchRecencyFilter
+      : 'noLimit',
+    contentSize: ['low', 'medium', 'high'].includes(String(config.contentSize))
+      ? config.contentSize
+      : 'high',
+    searchPrompt: String(config.searchPrompt || '').trim(),
+  };
+  webSearchConfigCache = normalized;
+  localStorage.setItem(WEB_SEARCH_CONFIG_KEY, JSON.stringify(normalized));
+}
+
+function getWebSearchConfig(): WebSearchConfig {
+  if (!webSearchConfigCache) webSearchConfigCache = loadWebSearchConfig();
+  return webSearchConfigCache;
+}
+
 /**
  * 构建 API 请求头
  */
@@ -113,19 +199,71 @@ function buildHeaders(model: ModelConfig): Record<string, string> {
 /**
  * 构建 API 请求体
  */
-function buildRequestBody(model: ModelConfig, prompt: string, maxTokens: number = 65536) {
+interface RequestBuildOptions {
+  maxTokens?: number;
+  searchQuery?: string;
+  webSearchConfig?: WebSearchConfig;
+  forceDisableWebSearch?: boolean;
+  stream?: boolean;
+  toolStream?: boolean;
+  signal?: AbortSignal;
+}
+
+function shouldTryWebSearch(model: ModelConfig, config: WebSearchConfig): boolean {
+  if (!config.enabled) return false;
+  if (runtimeUnsupportedProviders.has(model.provider)) return false;
+  return WEB_SEARCH_PROVIDER_SUPPORT[model.provider] === true;
+}
+
+function shouldTryTextStream(model: ModelConfig): boolean {
+  if (runtimeUnsupportedStreamProviders.has(model.provider)) return false;
+  return STREAM_PROVIDER_SUPPORT[model.provider] === true;
+}
+
+interface WebSearchTool {
+  type: 'web_search';
+  web_search: {
+    search_engine: WebSearchConfig['searchEngine'];
+    search_query: string;
+    search_result: boolean;
+    count: number;
+    search_recency_filter: WebSearchConfig['searchRecencyFilter'];
+    content_size: WebSearchConfig['contentSize'];
+    search_domain_filter?: string;
+    search_prompt?: string;
+  };
+}
+
+function buildWebSearchTool(config: WebSearchConfig, searchQuery: string) {
+  const tool: WebSearchTool = {
+    type: 'web_search',
+    web_search: {
+      search_engine: config.searchEngine,
+      search_query: searchQuery,
+      search_result: true,
+      count: Math.min(50, Math.max(1, config.count)),
+      search_recency_filter: config.searchRecencyFilter,
+      content_size: config.contentSize,
+    },
+  };
+  if (config.searchDomainFilter) tool.web_search.search_domain_filter = config.searchDomainFilter;
+  if (config.searchPrompt) tool.web_search.search_prompt = config.searchPrompt;
+  return tool;
+}
+
+function buildRequestBody(model: ModelConfig, prompt: string, options: RequestBuildOptions = {}) {
   // 根据不同提供商调整 max_tokens
-  let adjustedMaxTokens = model.maxTokens || maxTokens;
+  let adjustedMaxTokens = model.maxTokens || options.maxTokens || 65536;
 
   if (model.provider === 'zhipu') {
     // 智谱 AI 的 max_tokens 最大值为 32768
     adjustedMaxTokens = Math.min(adjustedMaxTokens, 32768);
   }
 
-  const body: any = {
+  const body: Record<string, unknown> = {
     model: model.model,
     max_tokens: adjustedMaxTokens,
-    temperature: model.temperature || 0.7,
+    temperature: model.temperature || 1,
   };
 
   if (model.provider === 'anthropic') {
@@ -145,7 +283,259 @@ function buildRequestBody(model: ModelConfig, prompt: string, maxTokens: number 
     body.messages = [{ role: 'user', content: prompt }];
   }
 
+  const searchConfig = options.webSearchConfig || getWebSearchConfig();
+  const canSearch = !options.forceDisableWebSearch && shouldTryWebSearch(model, searchConfig);
+  if (canSearch) body.tools = [buildWebSearchTool(searchConfig, options.searchQuery || prompt)];
+  if (options.stream) body.stream = true;
+  if (options.stream && options.toolStream) body.tool_stream = true;
+
   return body;
+}
+
+interface RequestAnswerResult {
+  content: string;
+  sources: QuerySource[];
+  webSearchAttempted: boolean;
+  webSearchFallback: boolean;
+  streamFallback?: boolean;
+}
+
+export interface QueryStreamHandlers {
+  onDelta?: (deltaText: string) => void;
+}
+
+export interface QueryStreamOptions {
+  signal?: AbortSignal;
+}
+
+function isWebSearchUnsupported(status: number, errorText: string): boolean {
+  if (status < 400) return false;
+  const text = errorText.toLowerCase();
+  return (
+    text.includes('web_search') ||
+    text.includes('tools') ||
+    text.includes('tool') ||
+    text.includes('unsupported') ||
+    text.includes('unknown field') ||
+    text.includes('invalid parameter')
+  );
+}
+
+function normalizeSources(input: unknown): QuerySource[] {
+  if (!Array.isArray(input)) return [];
+  const dedup = new Map<string, QuerySource>();
+  for (const item of input) {
+    if (!item || typeof item !== 'object') continue;
+    const sourceItem = item as Record<string, unknown>;
+    const url = String(sourceItem.url || sourceItem.link || sourceItem.source || '').trim();
+    if (!url) continue;
+    const source: QuerySource = {
+      title: String(sourceItem.title || sourceItem.name || '').trim() || undefined,
+      url,
+      publishedAt: String(
+        sourceItem.published_at || sourceItem.published_time || sourceItem.time || sourceItem.date || ''
+      ).trim() || undefined,
+    };
+    if (!dedup.has(url)) dedup.set(url, source);
+  }
+  return Array.from(dedup.values());
+}
+
+function getNestedValue(input: unknown, path: Array<string | number>): unknown {
+  let current: unknown = input;
+  for (const key of path) {
+    if (typeof key === 'number') {
+      if (!Array.isArray(current) || key >= current.length) return undefined;
+      current = current[key];
+      continue;
+    }
+    if (!current || typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+function extractSourcesFromResponse(data: unknown): QuerySource[] {
+  const candidates = [
+    getNestedValue(data, ['web_search', 'search_result']),
+    getNestedValue(data, ['search_result']),
+    getNestedValue(data, ['references']),
+    getNestedValue(data, ['choices', 0, 'message', 'search_result']),
+    getNestedValue(data, ['choices', 0, 'message', 'references']),
+    getNestedValue(data, ['choices', 0, 'message', 'tool_calls', 0, 'web_search', 'search_result']),
+    getNestedValue(data, ['choices', 0, 'message', 'tool_calls', 0, 'search_result']),
+  ];
+  for (const candidate of candidates) {
+    const parsed = normalizeSources(candidate);
+    if (parsed.length > 0) return parsed;
+  }
+  return [];
+}
+
+function extractContentFromResponse(model: ModelConfig, data: unknown): string {
+  if (model.provider === 'anthropic') return String(getNestedValue(data, ['content', 0, 'text']) || '').trim();
+  return String(getNestedValue(data, ['choices', 0, 'message', 'content']) || '').trim();
+}
+
+async function requestWithOptionalWebSearch(
+  model: ModelConfig,
+  prompt: string,
+  label: string,
+  options: RequestBuildOptions = {}
+): Promise<RequestAnswerResult> {
+  const config = options.webSearchConfig || getWebSearchConfig();
+  const webSearchAttempted = shouldTryWebSearch(model, config) && !options.forceDisableWebSearch;
+  const firstBody = buildRequestBody(model, prompt, options);
+  let response = await fetch(model.baseURL, {
+    method: 'POST',
+    headers: buildHeaders(model),
+    body: JSON.stringify(firstBody),
+    signal: options.signal,
+  });
+
+  let webSearchFallback = false;
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (webSearchAttempted && isWebSearchUnsupported(response.status, errorText)) {
+      runtimeUnsupportedProviders.add(model.provider);
+      webSearchFallback = true;
+      const retryBody = buildRequestBody(model, prompt, { ...options, forceDisableWebSearch: true });
+      response = await fetch(model.baseURL, {
+        method: 'POST',
+        headers: buildHeaders(model),
+        body: JSON.stringify(retryBody),
+        signal: options.signal,
+      });
+      if (!response.ok) {
+        const retryError = await response.text();
+        console.error(`❌ ${label} API 错误:`, retryError);
+        throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+      }
+    } else {
+      console.error(`❌ ${label} API 错误:`, errorText);
+      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  const data = await response.json();
+  return {
+    content: extractContentFromResponse(model, data),
+    sources: extractSourcesFromResponse(data),
+    webSearchAttempted,
+    webSearchFallback,
+  };
+}
+
+function isStreamUnsupported(status: number, errorText: string): boolean {
+  if (status < 400) return false;
+  const text = errorText.toLowerCase();
+  return (
+    text.includes('stream') ||
+    text.includes('tool_stream') ||
+    text.includes('not support stream') ||
+    text.includes('unsupported')
+  );
+}
+
+async function consumeStreamedText(
+  response: Response,
+  handlers?: QueryStreamHandlers,
+  signal?: AbortSignal
+): Promise<string> {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let fullText = '';
+  while (true) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const parsed = JSON.parse(payload) as unknown;
+        const delta = String(getNestedValue(parsed, ['choices', 0, 'delta', 'content']) || '');
+        if (!delta) continue;
+        fullText += delta;
+        handlers?.onDelta?.(delta);
+      } catch {
+        // Ignore malformed stream chunks and keep reading.
+      }
+    }
+  }
+  return fullText;
+}
+
+async function requestWithOptionalWebSearchStream(
+  model: ModelConfig,
+  prompt: string,
+  label: string,
+  handlers?: QueryStreamHandlers,
+  options: RequestBuildOptions = {}
+): Promise<RequestAnswerResult> {
+  const config = options.webSearchConfig || getWebSearchConfig();
+  const webSearchAttempted = shouldTryWebSearch(model, config) && !options.forceDisableWebSearch;
+  const firstBody = buildRequestBody(model, prompt, { ...options, stream: true, toolStream: false });
+  let response = await fetch(model.baseURL, {
+    method: 'POST',
+    headers: buildHeaders(model),
+    body: JSON.stringify(firstBody),
+    signal: options.signal,
+  });
+
+  let webSearchFallback = false;
+  if (!response.ok) {
+    const errorText = await response.text();
+    if (webSearchAttempted && isWebSearchUnsupported(response.status, errorText)) {
+      runtimeUnsupportedProviders.add(model.provider);
+      webSearchFallback = true;
+      const retryBody = buildRequestBody(model, prompt, { ...options, forceDisableWebSearch: true, stream: true, toolStream: false });
+      response = await fetch(model.baseURL, {
+        method: 'POST',
+        headers: buildHeaders(model),
+        body: JSON.stringify(retryBody),
+        signal: options.signal,
+      });
+      if (!response.ok) {
+        const retryError = await response.text();
+        if (isStreamUnsupported(response.status, retryError)) {
+          runtimeUnsupportedStreamProviders.add(model.provider);
+          const fallbackResult = await requestWithOptionalWebSearch(model, prompt, label, {
+            ...options,
+            forceDisableWebSearch: true,
+          });
+          handlers?.onDelta?.(fallbackResult.content);
+          return { ...fallbackResult, streamFallback: true, webSearchFallback: true };
+        }
+        console.error(`❌ ${label} API 错误:`, retryError);
+        throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+      }
+    } else if (isStreamUnsupported(response.status, errorText)) {
+      runtimeUnsupportedStreamProviders.add(model.provider);
+      const fallbackResult = await requestWithOptionalWebSearch(model, prompt, label, options);
+      handlers?.onDelta?.(fallbackResult.content);
+      return { ...fallbackResult, streamFallback: true };
+    } else {
+      console.error(`❌ ${label} API 错误:`, errorText);
+      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  const content = await consumeStreamedText(response, handlers, options.signal);
+  return {
+    content: String(content || '').trim(),
+    sources: [],
+    webSearchAttempted,
+    webSearchFallback,
+    streamFallback: false,
+  };
 }
 
 /**
@@ -213,34 +603,12 @@ ${existingTasksContext}
     const requestBody = buildRequestBody(model, prompt);
     console.log('%c📋 请求体:', 'color: #FFE48A; font-weight: bold', JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(model.baseURL, {
-      method: 'POST',
-      headers: buildHeaders(model),
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('%c📥 收到响应', 'color: #87CEEB; font-size: 14px; font-weight: bold', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('%c❌ AI API 错误', 'color: #FF5C8D; font-size: 16px; font-weight: bold', errorText);
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const result = await requestWithOptionalWebSearch(model, prompt, '任务拆解', { searchQuery: task });
     console.log('%c✅ API 调用成功', 'color: #98D8C8; font-size: 14px; font-weight: bold');
-    console.log('%c响应数据:', 'color: #B19CD9; font-weight: bold', data);
-
-    // 解析 AI 返回的内容
-    let content: string;
-
-    if (model.provider === 'anthropic') {
-      // Anthropic 使用不同的响应格式
-      content = data.content[0].text;
-    } else {
-      // OpenAI 格式
-      content = data.choices[0].message.content;
+    if (result.webSearchFallback) {
+      console.warn('%c⚠️ 联网工具不受支持，已自动降级为普通请求', 'color: #FFE48A; font-weight: bold');
     }
+    let content = result.content;
 
     // 移除可能的 markdown 代码块标记
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -291,10 +659,81 @@ interface KnowledgeQueryRequest {
   term: string;
   concept?: string;
   termDefinition?: string;
+  followupQuestion?: string;
+  history?: QueryChatMessage[];
 }
 
 interface KnowledgeQueryResponse {
   answer: string;
+  sources: QuerySource[];
+  sourceNotice?: string;
+}
+
+interface ExamAngleQueryRequest {
+  term: string;
+  concept?: string;
+  termDefinition?: string;
+  followupQuestion?: string;
+  history?: QueryChatMessage[];
+}
+
+interface ExamAngleQueryResponse {
+  answer: string;
+  sources: QuerySource[];
+  sourceNotice?: string;
+}
+
+export interface QueryChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: QuerySource[];
+  sourceNotice?: string;
+}
+
+function buildChatHistoryText(messages: QueryChatMessage[]): string {
+  const recent = messages.slice(-6);
+  if (recent.length === 0) return '无';
+  return recent.map((item) => `${item.role === 'user' ? '用户' : '助手'}: ${item.content}`).join('\n');
+}
+
+function buildKnowledgePrompt(request: KnowledgeQueryRequest): string {
+  const { term, concept, termDefinition, followupQuestion, history = [] } = request;
+  const templates = loadPromptTemplates();
+  return followupQuestion
+    ? renderPromptTemplate(templates.knowledgeFollowupQuery, {
+      term,
+      concept: concept || '',
+      termDefinition: termDefinition || '',
+      targetConcept: concept || term,
+      followupQuestion,
+      chatHistory: buildChatHistoryText(history),
+    })
+    : renderPromptTemplate(templates.knowledgeQuery, {
+      term,
+      concept: concept || '',
+      termDefinition: termDefinition || '',
+      targetConcept: concept || term,
+    });
+}
+
+function buildExamAnglePrompt(request: ExamAngleQueryRequest): string {
+  const { term, concept, termDefinition, followupQuestion, history = [] } = request;
+  const templates = loadPromptTemplates();
+  return followupQuestion
+    ? renderPromptTemplate(templates.examAngleFollowupQuery, {
+      term,
+      concept: concept || '',
+      termDefinition: termDefinition || '',
+      targetConcept: concept || term,
+      followupQuestion,
+      chatHistory: buildChatHistoryText(history),
+    })
+    : renderPromptTemplate(templates.examAngleQuery, {
+      term,
+      concept: concept || '',
+      termDefinition: termDefinition || '',
+      targetConcept: concept || term,
+    });
 }
 
 /**
@@ -359,30 +798,11 @@ ${description ? `补充说明：${description}` : ''}
 
     console.log('📤 发送 AI 解答请求...', model.name);
 
-    const response = await fetch(model.baseURL, {
-      method: 'POST',
-      headers: buildHeaders(model),
-      body: JSON.stringify(buildRequestBody(model, prompt)),
-    });
-
-    console.log('📥 收到 AI 解答响应:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ AI API 错误:', errorText);
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    let answer: string;
-
-    if (model.provider === 'anthropic') {
-      answer = data.content[0].text;
-    } else {
-      answer = data.choices[0].message.content;
-    }
+    const result = await requestWithOptionalWebSearch(model, prompt, 'AI 解答', { searchQuery: coreTopic });
+    const answer = result.content;
 
     console.log('✅ AI 解答完成');
+    if (result.webSearchFallback) console.warn('⚠️ 联网工具不受支持，已自动降级为普通请求');
     return { answer };
   } catch (error) {
     console.error('❌ AI 解答失败:', error);
@@ -394,7 +814,7 @@ ${description ? `补充说明：${description}` : ''}
  * 查询术语相关考点（直接返回 AI 原文，不做分条解析）
  */
 export async function queryKnowledgeAI(request: KnowledgeQueryRequest): Promise<KnowledgeQueryResponse> {
-  const { term, concept, termDefinition } = request;
+  const { term } = request;
   const model = getCurrentModel();
 
   if (!model) {
@@ -402,40 +822,98 @@ export async function queryKnowledgeAI(request: KnowledgeQueryRequest): Promise<
   }
 
   try {
-    const templates = loadPromptTemplates();
-    const prompt = renderPromptTemplate(templates.knowledgeQuery, {
-      term,
-      concept: concept || '',
-      termDefinition: termDefinition || '',
-      targetConcept: concept || term,
-    });
-
-    const response = await fetch(model.baseURL, {
-      method: 'POST',
-      headers: buildHeaders(model),
-      body: JSON.stringify(buildRequestBody(model, prompt)),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ 考点查询 API 错误:', errorText);
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    let answer: string;
-
-    if (model.provider === 'anthropic') {
-      answer = data.content[0].text;
-    } else {
-      answer = data.choices[0].message.content;
-    }
-
-    return { answer: answer.trim() };
+    const prompt = buildKnowledgePrompt(request);
+    const result = await requestQueryAnswer(model, prompt, '考点查询', term);
+    return result;
   } catch (error) {
     console.error('❌ 查询考点失败:', error);
     throw error;
   }
+}
+
+/**
+ * 查询术语/概念的考研出题角度（直接返回 AI 原文）
+ */
+export async function queryExamAnglesAI(request: ExamAngleQueryRequest): Promise<ExamAngleQueryResponse> {
+  const { term } = request;
+  const model = getCurrentModel();
+
+  if (!model) {
+    throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
+  }
+
+  try {
+    const prompt = buildExamAnglePrompt(request);
+    const result = await requestQueryAnswer(model, prompt, '出题角度查询', term);
+    return result;
+  } catch (error) {
+    console.error('❌ 查询出题角度失败:', error);
+    throw error;
+  }
+}
+
+export async function streamKnowledgeFollowupAI(
+  request: KnowledgeQueryRequest,
+  handlers?: QueryStreamHandlers,
+  options?: QueryStreamOptions
+): Promise<KnowledgeQueryResponse> {
+  const { term } = request;
+  const model = getCurrentModel();
+  if (!model) throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
+  const prompt = buildKnowledgePrompt(request);
+  return requestQueryAnswerStreaming(model, prompt, '考点追问', term, handlers, options);
+}
+
+export async function streamExamAngleFollowupAI(
+  request: ExamAngleQueryRequest,
+  handlers?: QueryStreamHandlers,
+  options?: QueryStreamOptions
+): Promise<ExamAngleQueryResponse> {
+  const { term } = request;
+  const model = getCurrentModel();
+  if (!model) throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
+  const prompt = buildExamAnglePrompt(request);
+  return requestQueryAnswerStreaming(model, prompt, '出题角度追问', term, handlers, options);
+}
+
+async function requestQueryAnswer(
+  model: ModelConfig,
+  prompt: string,
+  label: string,
+  searchQuery: string
+): Promise<KnowledgeQueryResponse> {
+  const result = await requestWithOptionalWebSearch(model, prompt, label, { searchQuery });
+  const answer = String(result.content || '').trim();
+  const sourceNotice = result.webSearchAttempted && result.sources.length === 0
+    ? '联网已开启，但本次未获取到可追溯来源。'
+    : result.webSearchFallback
+      ? '当前模型不支持联网工具，已自动降级为普通回答。'
+      : undefined;
+  return { answer, sources: result.sources, sourceNotice };
+}
+
+async function requestQueryAnswerStreaming(
+  model: ModelConfig,
+  prompt: string,
+  label: string,
+  searchQuery: string,
+  handlers?: QueryStreamHandlers,
+  options?: QueryStreamOptions
+): Promise<KnowledgeQueryResponse> {
+  const canStream = shouldTryTextStream(model);
+  const result = canStream
+    ? await requestWithOptionalWebSearchStream(model, prompt, label, handlers, { searchQuery, signal: options?.signal })
+    : await requestWithOptionalWebSearch(model, prompt, label, { searchQuery, signal: options?.signal });
+  const answer = String(result.content || '').trim();
+  if (!canStream) handlers?.onDelta?.(answer);
+  const sourceNotice = result.streamFallback
+    ? '当前模型不支持流式输出，已自动降级为普通回答。'
+    : result.webSearchAttempted && result.sources.length === 0
+      ? '联网已开启，但本次未获取到可追溯来源。'
+      : result.webSearchFallback
+        ? '当前模型不支持联网工具，已自动降级为普通回答。'
+        : undefined;
+  return { answer, sources: result.sources, sourceNotice };
 }
 
 /**
@@ -471,34 +949,14 @@ export async function breakdownConcept(request: ConceptBreakdownRequest): Promis
     const requestBody = buildRequestBody(model, prompt);
     console.log('%c📋 请求体:', 'color: #FFE48A; font-weight: bold', JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(model.baseURL, {
-      method: 'POST',
-      headers: buildHeaders(model),
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('%c📥 收到响应', 'color: #87CEEB; font-size: 14px; font-weight: bold', response.status, response.statusText);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('%c❌ AI API 错误', 'color: #FF5C8D; font-size: 16px; font-weight: bold', errorText);
-      throw new Error(`API 请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
+    const result = await requestWithOptionalWebSearch(model, prompt, '概念拆解', { searchQuery: concept });
     console.log('%c✅ API 调用成功', 'color: #98D8C8; font-size: 14px; font-weight: bold');
-    console.log('%c响应数据:', 'color: #B19CD9; font-weight: bold', data);
+    if (result.webSearchFallback) {
+      console.warn('%c⚠️ 联网工具不受支持，已自动降级为普通请求', 'color: #FFE48A; font-weight: bold');
+    }
 
     // 解析 AI 返回的内容
-    let content: string;
-
-    if (model.provider === 'anthropic') {
-      // Anthropic 使用不同的响应格式
-      content = data.content[0].text;
-    } else {
-      // OpenAI 格式
-      content = data.choices[0].message.content;
-    }
+    let content = result.content;
 
     // 移除可能的 markdown 代码块标记
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
