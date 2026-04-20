@@ -146,14 +146,14 @@ export function TerminologyList({
                       size="small"
                       icon={term.isBreakingDown ? <LoadingOutlined /> : <ThunderboltOutlined />}
                       onClick={() => onBreakdown(term.id)}
-                      disabled={term.isBreakingDown || hasChildren || isQueryingKnowledge || isQueryingExamAngle}
+                      disabled={term.isBreakingDown || isQueryingKnowledge || isQueryingExamAngle}
                       className="!rounded-full"
                       style={{
                         background: 'linear-gradient(135deg, #B19CD9 0%, #87CEEB 100%)',
                         border: 'none',
                       }}
                     >
-                      {term.isBreakingDown ? '拆解中' : '继续拆解'}
+                      {term.isBreakingDown ? '拆解中' : hasChildren ? '重新拆解' : '继续拆解'}
                     </Button>
                   )}
                 </div>

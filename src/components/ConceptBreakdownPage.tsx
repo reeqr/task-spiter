@@ -162,23 +162,28 @@ export function ConceptBreakdownPage() {
     };
 
     try {
-      // 找到要拆解的术语
-      const findTerm = (terms: typeof result.terminology): typeof result.terminology[0] | null => {
+      // 找到要拆解的术语及其在知识树中的路径
+      const findTermWithPath = (
+        terms: typeof result.terminology,
+        ancestors: string[] = []
+      ): { term: typeof result.terminology[0]; path: string[] } | null => {
         for (const term of terms) {
-          if (term.id === termId) return term;
+          const currentPath = [...ancestors, term.name];
+          if (term.id === termId) return { term, path: currentPath };
           if (term.children) {
-            const found = findTerm(term.children.terminology);
+            const found = findTermWithPath(term.children.terminology, currentPath);
             if (found) return found;
           }
         }
         return null;
       };
 
-      const term = findTerm(result.terminology);
-      if (!term) {
+      const foundTerm = findTermWithPath(result.terminology, [result.concept]);
+      if (!foundTerm) {
         message.error('未找到该术语');
         return;
       }
+      const { term, path } = foundTerm;
 
       // 设置拆解中状态
       setResult(prev => {
@@ -191,7 +196,7 @@ export function ConceptBreakdownPage() {
 
       // 调用 AI 拆解
       const existing = collectExistingItems(result);
-      const breakdown = await breakdownConcept(term.name, existing);
+      const breakdown = await breakdownConcept(term.name, existing, path);
 
       // 更新结果，添加子项并设置为展开状态
       setResult(prev => {

@@ -44,6 +44,7 @@ export interface ConceptBreakdownRequest {
   concept: string; // 要拆解的概念
   existingTerminology?: string[]; // 已拆解术语（避免重复）
   existingKnowledgePoints?: string[]; // 已拆解考点（避免重复）
+  nodePath?: string[]; // 当前节点在知识树中的路径
 }
 
 /**

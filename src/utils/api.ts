@@ -921,13 +921,14 @@ async function requestQueryAnswerStreaming(
  * 调用 AI API 拆解概念（支持多模型）
  */
 export async function breakdownConcept(request: ConceptBreakdownRequest): Promise<ConceptBreakdownResponse> {
-  const { concept, existingTerminology = [], existingKnowledgePoints = [] } = request;
+  const { concept, existingTerminology = [], existingKnowledgePoints = [], nodePath = [] } = request;
 
   // 获取当前模型
   const model = getCurrentModel();
 
   console.log('%c🔍 开始拆解概念', 'color: #FF85A2; font-size: 14px; font-weight: bold');
   console.log('%c概念:', 'color: #B19CD9; font-weight: bold', concept);
+  if (nodePath.length > 0) console.log('%c知识树位置:', 'color: #B19CD9; font-weight: bold', nodePath.join(' > '));
   console.log('%c使用模型:', 'color: #B19CD9; font-weight: bold', model?.name);
 
   // 检查模型配置
@@ -942,6 +943,7 @@ export async function breakdownConcept(request: ConceptBreakdownRequest): Promis
       concept,
       existingTerminology: existingTerminology.length > 0 ? existingTerminology.join('、') : '无',
       existingKnowledgePoints: existingKnowledgePoints.length > 0 ? existingKnowledgePoints.join('、') : '无',
+      treePosition: nodePath.length > 0 ? nodePath.join(' > ') : `根节点 > ${concept}`,
     });
 
     console.log('%c📤 发送请求到 AI API...', 'color: #87CEEB; font-size: 14px; font-weight: bold');

@@ -12,6 +12,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
   conceptBreakdown: `你是“知识架构师”。请将输入概念拆解为“下一层、同粒度、可递归”的术语节点，服务于后续逐节点继续拆解，最终形成知识树。
 
 概念：{{concept}}
+当前在知识树中的位置：{{treePosition}}
 
 以下是已经拆解过的内容（禁止重复）：
 - 已有术语：{{existingTerminology}}
@@ -26,6 +27,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
 2. 所有术语必须处于同一抽象层级，禁止跨层混排（例如“大模块 + 具体技巧”混在一起）。
 3. 按依赖关系排序输出：先修/基础 -> 核心机制 -> 关键约束/边界 -> 应用/实践。
 4. 不追求一次穷尽全部细节，优先输出主干结构。
+5. 输出术语必须同时符合“直接上级语义”和“整条路径语义”，避免只贴合父节点但偏离整棵树方向。
 
 【术语质量规则】
 1. 只输出专业术语列表（name + definition）。

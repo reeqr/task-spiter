@@ -16,7 +16,8 @@ export function useConceptBreakdown() {
    */
   const breakdownConcept = async (
     concept: string,
-    existing?: { terminology: string[]; knowledgePoints: string[] }
+    existing?: { terminology: string[]; knowledgePoints: string[] },
+    nodePath?: string[]
   ): Promise<ConceptBreakdown> => {
     console.log('%c🔧 useConceptBreakdown.breakdownConcept 被调用', 'color: #FF85A2; font-size: 14px; font-weight: bold');
     console.log('%c概念:', 'color: #B19CD9; font-weight: bold', concept);
@@ -38,6 +39,7 @@ export function useConceptBreakdown() {
         concept,
         existingTerminology: existing?.terminology ?? [],
         existingKnowledgePoints: existing?.knowledgePoints ?? [],
+        nodePath: nodePath ?? [],
       });
 
       console.log('%c✅ breakdownConceptAPI 返回:', 'color: #98D8C8; font-size: 14px; font-weight: bold', response);
