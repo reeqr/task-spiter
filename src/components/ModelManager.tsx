@@ -27,6 +27,7 @@ import {
   PlusOutlined,
   ApiOutlined,
   AppstoreOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useProviderManager } from '../hooks/useProviderManager';
 import type { ProviderConfig, AIModel } from '../types/model';
@@ -45,6 +46,16 @@ import {
 const { Text, Title, Paragraph } = Typography;
 const { Panel } = Collapse;
 const { TextArea } = Input;
+const PROMPT_VARIABLES = [
+  { key: '{{concept}}', desc: '当前拆解的主概念名称，例如“高等数学”。' },
+  { key: '{{term}}', desc: '当前查询的术语名，即按钮所在那一项。' },
+  { key: '{{termDefinition}}', desc: '该术语已有定义，可用于补充上下文。' },
+  { key: '{{targetConcept}}', desc: '目标概念，通常等于 concept 或 term。' },
+  { key: '{{existingTerminology}}', desc: '已拆解出的术语列表，用于避免重复。' },
+  { key: '{{existingKnowledgePoints}}', desc: '已拆解出的考点列表，用于避免重复。' },
+  { key: '{{chatHistory}}', desc: '最近多轮对话上下文，追问模板常用。' },
+  { key: '{{followupQuestion}}', desc: '用户本次在弹窗输入的追问内容。' },
+];
 
 interface ModelManagerProps {
   visible: boolean;
@@ -819,12 +830,23 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
           styles={{ body: { padding: '16px' } }}
         >
           <Space direction="vertical" size="middle" className="w-full">
-            <Text strong style={{ color: '#4D7CFE' }}>
-              🧠 提示词模板配置
-            </Text>
-            <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              支持变量：`{'{{concept}}'}`、`{'{{term}}'}`、`{'{{termDefinition}}'}`、`{'{{targetConcept}}'}`、`{'{{existingTerminology}}'}`、`{'{{existingKnowledgePoints}}'}`、`{'{{chatHistory}}'}`、`{'{{followupQuestion}}'}`
-            </Paragraph>
+            <div className="flex items-center justify-between">
+              <Text strong style={{ color: '#4D7CFE' }}>
+                🧠 提示词模板配置
+              </Text>
+              <Tooltip title={(
+                <div className="space-y-1" style={{ color: '#1f2937' }}>
+                  {PROMPT_VARIABLES.map((item) => (
+                    <div key={item.key}>
+                      <Text code>{item.key}</Text>
+                      <Text className="ml-2" style={{ color: '#374151' }}>{item.desc}</Text>
+                    </div>
+                  ))}
+                </div>
+              )} color="#ffffff" overlayInnerStyle={{ maxWidth: 520, border: '1px solid #dbeafe' }}>
+                <Button type="text" size="small" icon={<InfoCircleOutlined />} />
+              </Tooltip>
+            </div>
 
             <Collapse accordion bordered={false} className="!bg-transparent">
               <Panel header="概念拆解提示词模板" key="conceptBreakdown">
@@ -836,42 +858,55 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
                   autoSize={{ minRows: 8, maxRows: 16 }}
                 />
               </Panel>
-              <Panel header="解释提示词模板" key="knowledgeQuery">
-                <TextArea
-                  value={promptTemplates.knowledgeQuery}
-                  onChange={(e) =>
-                    setPromptTemplates((prev) => ({ ...prev, knowledgeQuery: e.target.value }))
-                  }
-                  autoSize={{ minRows: 6, maxRows: 14 }}
-                />
-              </Panel>
-              <Panel header="出题角度提示词模板" key="examAngleQuery">
-                <TextArea
-                  value={promptTemplates.examAngleQuery}
-                  onChange={(e) =>
-                    setPromptTemplates((prev) => ({ ...prev, examAngleQuery: e.target.value }))
-                  }
-                  autoSize={{ minRows: 6, maxRows: 14 }}
-                />
-              </Panel>
-              <Panel header="解释追问提示词模板" key="knowledgeFollowupQuery">
-                <TextArea
-                  value={promptTemplates.knowledgeFollowupQuery}
-                  onChange={(e) =>
-                    setPromptTemplates((prev) => ({ ...prev, knowledgeFollowupQuery: e.target.value }))
-                  }
-                  autoSize={{ minRows: 6, maxRows: 14 }}
-                />
-              </Panel>
-              <Panel header="出题角度追问提示词模板" key="examAngleFollowupQuery">
-                <TextArea
-                  value={promptTemplates.examAngleFollowupQuery}
-                  onChange={(e) =>
-                    setPromptTemplates((prev) => ({ ...prev, examAngleFollowupQuery: e.target.value }))
-                  }
-                  autoSize={{ minRows: 6, maxRows: 14 }}
-                />
-              </Panel>
+              {promptTemplates.queryActions
+                .slice()
+                .sort((a, b) => a.sort - b.sort)
+                .map((action) => (
+                  <Panel header={action.label} key={`action-${action.id}`}>
+                    <Space direction="vertical" size="middle" className="w-full">
+                      <div>
+                        <div>
+                          <Text className="block mb-1">按钮文案</Text>
+                          <Input
+                            value={action.label}
+                            onChange={(e) => setPromptTemplates((prev) => ({
+                              ...prev,
+                              queryActions: prev.queryActions.map((item) => (
+                                item.id === action.id ? { ...item, label: e.target.value } : item
+                              )),
+                            }))}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Text className="block mb-1">首轮提示词模板</Text>
+                        <TextArea
+                          value={action.queryTemplate}
+                          onChange={(e) => setPromptTemplates((prev) => ({
+                            ...prev,
+                            queryActions: prev.queryActions.map((item) => (
+                              item.id === action.id ? { ...item, queryTemplate: e.target.value } : item
+                            )),
+                          }))}
+                          autoSize={{ minRows: 4, maxRows: 10 }}
+                        />
+                      </div>
+                      <div>
+                        <Text className="block mb-1">追问提示词模板</Text>
+                        <TextArea
+                          value={action.followupTemplate}
+                          onChange={(e) => setPromptTemplates((prev) => ({
+                            ...prev,
+                            queryActions: prev.queryActions.map((item) => (
+                              item.id === action.id ? { ...item, followupTemplate: e.target.value } : item
+                            )),
+                          }))}
+                          autoSize={{ minRows: 4, maxRows: 10 }}
+                        />
+                      </div>
+                    </Space>
+                  </Panel>
+                ))}
             </Collapse>
 
             <Space>

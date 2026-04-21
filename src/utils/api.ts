@@ -8,7 +8,12 @@ import type { BreakdownRequest, BreakdownResponse } from '../types/task';
 import type { ConceptBreakdownRequest, ConceptBreakdownResponse } from '../types/concept';
 import type { AIModel, AIProvider } from '../types/model';
 import { PREDEFINED_MODELS } from '../types/model';
-import { loadPromptTemplates, renderPromptTemplate } from './promptConfig';
+import {
+  loadPromptTemplates,
+  renderPromptTemplate,
+  QUERY_ACTION_EXAM_ANGLE,
+  QUERY_ACTION_KNOWLEDGE,
+} from './promptConfig';
 
 // 默认使用智谱AI（向后兼容）
 const DEFAULT_API_KEY = import.meta.env.VITE_ZHIPU_API_KEY || '';
@@ -656,7 +661,8 @@ interface ConsultResponse {
   answer: string;
 }
 
-interface KnowledgeQueryRequest {
+export interface QueryActionRequest {
+  actionId: string;
   term: string;
   concept?: string;
   termDefinition?: string;
@@ -668,14 +674,6 @@ interface KnowledgeQueryResponse {
   answer: string;
   sources: QuerySource[];
   sourceNotice?: string;
-}
-
-interface ExamAngleQueryRequest {
-  term: string;
-  concept?: string;
-  termDefinition?: string;
-  followupQuestion?: string;
-  history?: QueryChatMessage[];
 }
 
 interface ExamAngleQueryResponse {
@@ -697,44 +695,46 @@ function buildChatHistoryText(messages: QueryChatMessage[]): string {
   return recent.map((item) => `${item.role === 'user' ? '用户' : '助手'}: ${item.content}`).join('\n');
 }
 
-function buildKnowledgePrompt(request: KnowledgeQueryRequest): string {
-  const { term, concept, termDefinition, followupQuestion, history = [] } = request;
+function buildActionPrompt(request: QueryActionRequest): string {
+  const { actionId, term, concept, termDefinition, followupQuestion, history = [] } = request;
   const templates = loadPromptTemplates();
-  return followupQuestion
-    ? renderPromptTemplate(templates.knowledgeFollowupQuery, {
-      term,
-      concept: concept || '',
-      termDefinition: termDefinition || '',
-      targetConcept: concept || term,
-      followupQuestion,
-      chatHistory: buildChatHistoryText(history),
-    })
-    : renderPromptTemplate(templates.knowledgeQuery, {
-      term,
-      concept: concept || '',
-      termDefinition: termDefinition || '',
-      targetConcept: concept || term,
-    });
+  const action = templates.queryActions.find((item) => item.id === actionId) || templates.queryActions[0];
+  const template = followupQuestion ? action.followupTemplate : action.queryTemplate;
+  const variables = {
+    term,
+    concept: concept || '',
+    termDefinition: termDefinition || '',
+    targetConcept: concept || term,
+    followupQuestion: followupQuestion || '',
+    chatHistory: buildChatHistoryText(history),
+  };
+  return renderPromptTemplate(template, variables);
 }
 
-function buildExamAnglePrompt(request: ExamAngleQueryRequest): string {
-  const { term, concept, termDefinition, followupQuestion, history = [] } = request;
-  const templates = loadPromptTemplates();
-  return followupQuestion
-    ? renderPromptTemplate(templates.examAngleFollowupQuery, {
-      term,
-      concept: concept || '',
-      termDefinition: termDefinition || '',
-      targetConcept: concept || term,
-      followupQuestion,
-      chatHistory: buildChatHistoryText(history),
-    })
-    : renderPromptTemplate(templates.examAngleQuery, {
-      term,
-      concept: concept || '',
-      termDefinition: termDefinition || '',
-      targetConcept: concept || term,
-    });
+function buildKnowledgePrompt(request: QueryActionRequest): string {
+  return buildActionPrompt({
+    ...request,
+    actionId: request.actionId || QUERY_ACTION_KNOWLEDGE,
+  });
+}
+
+function buildExamAnglePrompt(request: QueryActionRequest): string {
+  return buildActionPrompt({
+    ...request,
+    actionId: request.actionId || QUERY_ACTION_EXAM_ANGLE,
+  });
+}
+
+function buildActionLabel(actionId: string): string {
+  const action = loadPromptTemplates().queryActions.find((item) => item.id === actionId);
+  return action?.label || '查询';
+}
+
+function buildPromptFromAction(request: QueryActionRequest): string {
+  const { actionId } = request;
+  if (actionId === QUERY_ACTION_KNOWLEDGE) return buildKnowledgePrompt(request);
+  if (actionId === QUERY_ACTION_EXAM_ANGLE) return buildExamAnglePrompt(request);
+  return buildActionPrompt(request);
 }
 
 /**
@@ -814,7 +814,7 @@ ${description ? `补充说明：${description}` : ''}
 /**
  * 查询术语相关考点（直接返回 AI 原文，不做分条解析）
  */
-export async function queryKnowledgeAI(request: KnowledgeQueryRequest): Promise<KnowledgeQueryResponse> {
+export async function queryKnowledgeAI(request: QueryActionRequest): Promise<KnowledgeQueryResponse> {
   const { term } = request;
   const model = getCurrentModel();
 
@@ -835,7 +835,7 @@ export async function queryKnowledgeAI(request: KnowledgeQueryRequest): Promise<
 /**
  * 查询术语/概念的考研出题角度（直接返回 AI 原文）
  */
-export async function queryExamAnglesAI(request: ExamAngleQueryRequest): Promise<ExamAngleQueryResponse> {
+export async function queryExamAnglesAI(request: QueryActionRequest): Promise<ExamAngleQueryResponse> {
   const { term } = request;
   const model = getCurrentModel();
 
@@ -854,27 +854,36 @@ export async function queryExamAnglesAI(request: ExamAngleQueryRequest): Promise
 }
 
 export async function streamKnowledgeFollowupAI(
-  request: KnowledgeQueryRequest,
+  request: QueryActionRequest,
+  handlers?: QueryStreamHandlers,
+  options?: QueryStreamOptions
+): Promise<KnowledgeQueryResponse> {
+  const mergedRequest = { ...request, actionId: request.actionId || QUERY_ACTION_KNOWLEDGE };
+  const { term } = mergedRequest;
+  const model = getCurrentModel();
+  if (!model) throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
+  const prompt = buildPromptFromAction(mergedRequest);
+  return requestQueryAnswerStreaming(model, prompt, `${buildActionLabel(mergedRequest.actionId)}追问`, term, handlers, options);
+}
+
+export async function streamQueryActionAI(
+  request: QueryActionRequest,
   handlers?: QueryStreamHandlers,
   options?: QueryStreamOptions
 ): Promise<KnowledgeQueryResponse> {
   const { term } = request;
   const model = getCurrentModel();
   if (!model) throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
-  const prompt = buildKnowledgePrompt(request);
-  return requestQueryAnswerStreaming(model, prompt, '考点追问', term, handlers, options);
+  const prompt = buildPromptFromAction(request);
+  return requestQueryAnswerStreaming(model, prompt, `${buildActionLabel(request.actionId)}追问`, term, handlers, options);
 }
 
 export async function streamExamAngleFollowupAI(
-  request: ExamAngleQueryRequest,
+  request: QueryActionRequest,
   handlers?: QueryStreamHandlers,
   options?: QueryStreamOptions
 ): Promise<ExamAngleQueryResponse> {
-  const { term } = request;
-  const model = getCurrentModel();
-  if (!model) throw new Error('未配置 AI 模型，请在设置中配置模型和 API Key');
-  const prompt = buildExamAnglePrompt(request);
-  return requestQueryAnswerStreaming(model, prompt, '出题角度追问', term, handlers, options);
+  return streamQueryActionAI({ ...request, actionId: request.actionId || QUERY_ACTION_EXAM_ANGLE }, handlers, options);
 }
 
 async function requestQueryAnswer(

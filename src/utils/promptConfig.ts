@@ -1,12 +1,75 @@
+export const QUERY_ACTION_KNOWLEDGE = 'knowledge-explain';
+export const QUERY_ACTION_EXAM_ANGLE = 'exam-angle';
+export const QUERY_ACTION_COMMON_TRAPS = 'common-traps';
+
+export interface QueryActionConfig {
+  id: string;
+  label: string;
+  enabled: boolean;
+  sort: number;
+  queryTemplate: string;
+  followupTemplate: string;
+}
+
 export interface PromptTemplates {
   conceptBreakdown: string;
-  knowledgeQuery: string;
-  examAngleQuery: string;
-  knowledgeFollowupQuery: string;
-  examAngleFollowupQuery: string;
+  queryActions: QueryActionConfig[];
+}
+
+interface LegacyPromptTemplates {
+  conceptBreakdown?: string;
+  knowledgeQuery?: string;
+  examAngleQuery?: string;
+  knowledgeFollowupQuery?: string;
+  examAngleFollowupQuery?: string;
 }
 
 const PROMPT_TEMPLATES_KEY = 'task_spiter_prompt_templates_v1';
+
+const DEFAULT_QUERY_ACTIONS: QueryActionConfig[] = [
+  {
+    id: QUERY_ACTION_KNOWLEDGE,
+    label: '解释',
+    enabled: true,
+    sort: 1,
+    queryTemplate: '什么是{{term}}，解释{{termDefinition}}',
+    followupTemplate: `你正在继续讲解术语“{{term}}”（所属概念：{{concept}}），定义参考：{{termDefinition}}。
+以下是最近对话：
+{{chatHistory}}
+
+用户最新追问：{{followupQuestion}}
+
+请延续上下文直接回答用户追问，回答要准确、简洁、结构清晰。`,
+  },
+  {
+    id: QUERY_ACTION_EXAM_ANGLE,
+    label: '出题角度',
+    enabled: true,
+    sort: 2,
+    queryTemplate: '你是考研命题老师，请围绕术语“{{term}}”（所属概念：{{concept}}）给出可能出题角度，术语定义参考：{{termDefinition}}。',
+    followupTemplate: `你正在继续分析术语“{{term}}”（所属概念：{{concept}}）的考研出题角度，定义参考：{{termDefinition}}。
+以下是最近对话：
+{{chatHistory}}
+
+用户最新追问：{{followupQuestion}}
+
+请基于已有上下文继续回答，聚焦命题思路、常见问法与易错点。`,
+  },
+  {
+    id: QUERY_ACTION_COMMON_TRAPS,
+    label: '易错点',
+    enabled: true,
+    sort: 3,
+    queryTemplate: '请围绕术语“{{term}}”（所属概念：{{concept}}）总结常见易错点和混淆点，定义参考：{{termDefinition}}，给出避坑建议。',
+    followupTemplate: `你正在继续分析术语“{{term}}”（所属概念：{{concept}}）的常见易错点，定义参考：{{termDefinition}}。
+以下是最近对话：
+{{chatHistory}}
+
+用户最新追问：{{followupQuestion}}
+
+请继续聚焦易错原因、纠正方法和快速自检要点。`,
+  },
+];
 
 export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
   conceptBreakdown: `你是“知识架构师”。请将输入概念拆解为“下一层、同粒度、可递归”的术语节点，服务于后续逐节点继续拆解，最终形成知识树。
@@ -50,43 +113,77 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
     }
   ]
 }`,
-  knowledgeQuery: `什么是{{term}}，解释{{termDefinition}}`,
-  examAngleQuery: `你是考研命题老师，请围绕术语“{{term}}”（所属概念：{{concept}}）给出可能出题角度，术语定义参考：{{termDefinition}}。`,
-  knowledgeFollowupQuery: `你正在继续讲解术语“{{term}}”（所属概念：{{concept}}），定义参考：{{termDefinition}}。
-以下是最近对话：
-{{chatHistory}}
-
-用户最新追问：{{followupQuestion}}
-
-请延续上下文直接回答用户追问，回答要准确、简洁、结构清晰。`,
-  examAngleFollowupQuery: `你正在继续分析术语“{{term}}”（所属概念：{{concept}}）的考研出题角度，定义参考：{{termDefinition}}。
-以下是最近对话：
-{{chatHistory}}
-
-用户最新追问：{{followupQuestion}}
-
-请基于已有上下文继续回答，聚焦命题思路、常见问法与易错点。`
+  queryActions: DEFAULT_QUERY_ACTIONS,
 };
+
+function cloneDefaultActions(): QueryActionConfig[] {
+  return DEFAULT_QUERY_ACTIONS.map((item) => ({ ...item }));
+}
+
+function normalizeAction(item: Partial<QueryActionConfig>, index: number): QueryActionConfig {
+  const fallback = DEFAULT_QUERY_ACTIONS[index] || DEFAULT_QUERY_ACTIONS[0];
+  return {
+    id: String(item.id || fallback.id),
+    label: String(item.label || fallback.label),
+    enabled: true,
+    sort: Number.isFinite(Number(item.sort)) ? Number(item.sort) : fallback.sort,
+    queryTemplate: String(item.queryTemplate || fallback.queryTemplate),
+    followupTemplate: String(item.followupTemplate || fallback.followupTemplate),
+  };
+}
+
+function buildMigratedActions(parsed: Partial<PromptTemplates> & LegacyPromptTemplates): QueryActionConfig[] {
+  const parsedActions = Array.isArray(parsed.queryActions) ? parsed.queryActions : [];
+  const hasNewActions = parsedActions.length > 0;
+  const currentActions = hasNewActions ? parsedActions.map((item, index) => normalizeAction(item, index)) : cloneDefaultActions();
+  if (!hasNewActions) {
+    const knowledge = currentActions.find((item) => item.id === QUERY_ACTION_KNOWLEDGE);
+    if (knowledge) {
+      if (parsed.knowledgeQuery) knowledge.queryTemplate = parsed.knowledgeQuery;
+      if (parsed.knowledgeFollowupQuery) knowledge.followupTemplate = parsed.knowledgeFollowupQuery;
+    }
+    const examAngle = currentActions.find((item) => item.id === QUERY_ACTION_EXAM_ANGLE);
+    if (examAngle) {
+      if (parsed.examAngleQuery) examAngle.queryTemplate = parsed.examAngleQuery;
+      if (parsed.examAngleFollowupQuery) examAngle.followupTemplate = parsed.examAngleFollowupQuery;
+    }
+  }
+  if (!currentActions.some((item) => item.enabled)) currentActions[0].enabled = true;
+  return currentActions.sort((a, b) => a.sort - b.sort);
+}
 
 export function loadPromptTemplates(): PromptTemplates {
   try {
     const stored = localStorage.getItem(PROMPT_TEMPLATES_KEY);
-    if (!stored) return DEFAULT_PROMPT_TEMPLATES;
-    const parsed = JSON.parse(stored) as Partial<PromptTemplates>;
+    if (!stored) {
+      return {
+        conceptBreakdown: DEFAULT_PROMPT_TEMPLATES.conceptBreakdown,
+        queryActions: cloneDefaultActions(),
+      };
+    }
+    const parsed = JSON.parse(stored) as Partial<PromptTemplates> & LegacyPromptTemplates;
     return {
       conceptBreakdown: parsed.conceptBreakdown || DEFAULT_PROMPT_TEMPLATES.conceptBreakdown,
-      knowledgeQuery: parsed.knowledgeQuery || DEFAULT_PROMPT_TEMPLATES.knowledgeQuery,
-      examAngleQuery: parsed.examAngleQuery || DEFAULT_PROMPT_TEMPLATES.examAngleQuery,
-      knowledgeFollowupQuery: parsed.knowledgeFollowupQuery || DEFAULT_PROMPT_TEMPLATES.knowledgeFollowupQuery,
-      examAngleFollowupQuery: parsed.examAngleFollowupQuery || DEFAULT_PROMPT_TEMPLATES.examAngleFollowupQuery,
+      queryActions: buildMigratedActions(parsed),
     };
   } catch {
-    return DEFAULT_PROMPT_TEMPLATES;
+    return {
+      conceptBreakdown: DEFAULT_PROMPT_TEMPLATES.conceptBreakdown,
+      queryActions: cloneDefaultActions(),
+    };
   }
 }
 
 export function savePromptTemplates(templates: PromptTemplates) {
-  localStorage.setItem(PROMPT_TEMPLATES_KEY, JSON.stringify(templates));
+  const normalized: PromptTemplates = {
+    conceptBreakdown: String(templates.conceptBreakdown || DEFAULT_PROMPT_TEMPLATES.conceptBreakdown),
+    queryActions: buildMigratedActions(templates).map((item) => ({ ...item, enabled: true })),
+  };
+  localStorage.setItem(PROMPT_TEMPLATES_KEY, JSON.stringify(normalized));
+}
+
+export function getEnabledQueryActions(templates: PromptTemplates): QueryActionConfig[] {
+  return templates.queryActions.slice().sort((a, b) => a.sort - b.sort);
 }
 
 export function renderPromptTemplate(
