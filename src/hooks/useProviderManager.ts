@@ -140,7 +140,7 @@ export function useProviderManager() {
       model: 'MiniMax-M2.7',
       displayName: 'MiniMax M2.7 (默认)',
       maxTokens: 32768,
-      temperature: 0,
+      temperature: 0.1,
       supportsThinking: false,
       thinkingEnabled: false,
     };
