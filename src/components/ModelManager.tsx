@@ -656,12 +656,6 @@ export function ModelManager({ visible, onClose }: ModelManagerProps) {
                   size="large"
                   style={{ borderRadius: '8px' }}
                 />
-                <Paragraph
-                  type="secondary"
-                  style={{ fontSize: '12px', marginTop: '8px', marginBottom: 0 }}
-                >
-                  仅显示已添加的提供商；要 MiniMax/OpenAI 等请先用顶栏「添加新提供商」配置 Key。
-                </Paragraph>
               </div>
 
               <div>
