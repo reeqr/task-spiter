@@ -77,7 +77,7 @@ export const PREDEFINED_PROVIDERS: Record<string, Omit<ProviderConfig, 'apiKey'>
     id: 'minimax',
     name: 'MiniMax',
     provider: 'minimax',
-    baseURL: 'https://api.minimax.io/v1/chat/completions',
+    baseURL: 'https://api.minimaxi.com/v1/chat/completions',
     icon: '✨',
   },
   'custom': {
@@ -328,7 +328,7 @@ export const PREDEFINED_MODELS: Record<string, Omit<AIModel, 'apiKey'>> = {
     temperature: 0.7,
   },
 
-  // MiniMax（OpenAI 兼容接口，见 https://platform.minimax.io/docs/api-reference/text-openai-api ）
+  // MiniMax（OpenAI 兼容 /v1/chat/completions，见 platform.minimaxi.com 文档）
   'minimax-m2-7': {
     id: 'minimax-m2-7',
     providerId: 'minimax',
