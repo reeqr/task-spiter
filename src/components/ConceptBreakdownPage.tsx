@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Card, Typography, message, Button, Space, Modal, Empty, Input } from 'antd';
-import { ReloadOutlined, BulbOutlined, QuestionCircleOutlined, LoadingOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, BulbOutlined, QuestionCircleOutlined, LoadingOutlined, SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -12,6 +12,7 @@ import rehypeKatex from 'rehype-katex';
 import { ConceptInput } from './ConceptInput';
 import { TerminologyList } from './TerminologyList';
 import { useConceptBreakdown } from '../hooks/useConceptBreakdown';
+import { useConceptHistory } from '../hooks/useConceptHistory';
 import type { ConceptBreakdown } from '../types/concept';
 import { updateTermInTree } from '../utils/conceptTree';
 import { streamQueryActionAI, type QueryChatMessage } from '../utils/api';
@@ -69,6 +70,7 @@ function getQueryActionIcon(actionId: string) {
 
 export function ConceptBreakdownPage() {
   const { breakdownConcept, isLoading } = useConceptBreakdown();
+  const { history, saveToHistory, deleteFromHistory } = useConceptHistory();
   const [result, setResult] = useState<ConceptBreakdown | null>(null);
   const [lastConcept, setLastConcept] = useState<string>('');
   const [queryingTermByAction, setQueryingTermByAction] = useState<Record<string, string | null>>({});
@@ -111,6 +113,7 @@ export function ConceptBreakdownPage() {
       setLastConcept(concept);
       const breakdown = await breakdownConcept(concept);
       setResult(breakdown);
+      saveToHistory(breakdown);
       message.success('拆解完成！');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '拆解失败，请重试');
@@ -119,6 +122,18 @@ export function ConceptBreakdownPage() {
 
   const handleRetry = () => {
     if (lastConcept) handleBreakdown(lastConcept);
+  };
+
+  const handleLoadHistory = (breakdown: ConceptBreakdown) => {
+    setResult(breakdown);
+    setLastConcept(breakdown.concept);
+    message.success('已加载历史拆解结果');
+  };
+
+  const handleDeleteHistory = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteFromHistory(id);
+    message.success('已删除历史记录');
   };
 
   const handleBreakdownTerm = async (termId: string) => {
@@ -327,6 +342,27 @@ export function ConceptBreakdownPage() {
       <div className="max-w-3xl mx-auto px-4">
         <Card className="!mb-6 !rounded-2xl !border-2 !border-pink-200/30 !shadow-lg animate-slide-up" styles={{ body: { padding: '24px' } }}>
           <ConceptInput onSubmit={handleBreakdown} isLoading={isLoading} />
+          {history.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <Text type="secondary" className="text-xs">从最近选择:</Text>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {history.slice(0, 5).map((item) => (
+                  <Button
+                    key={item.id}
+                    size="small"
+                    onClick={() => handleLoadHistory(item.breakdown)}
+                    className="!rounded-full !border-pink-200"
+                  >
+                    {item.concept}
+                    <CloseCircleOutlined
+                      className="ml-1 text-pink-300 hover:text-pink-500"
+                      onClick={(e) => handleDeleteHistory(e, item.id)}
+                    />
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </Card>
         {result && (
           <Space direction="vertical" size="large" className="w-full">

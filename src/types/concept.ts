@@ -48,6 +48,17 @@ export interface ConceptBreakdownRequest {
 }
 
 /**
+ * 概念拆解历史记录项
+ */
+export interface ConceptHistoryItem {
+  id: string;           // UUID
+  concept: string;      // 概念名称
+  createdAt: number;    // 创建时间戳
+  updatedAt: number;    // 更新时间戳
+  breakdown: ConceptBreakdown;  // 完整拆解结果
+}
+
+/**
  * 概念拆解响应（AI API 返回的格式）
  */
 export interface ConceptBreakdownResponse {
