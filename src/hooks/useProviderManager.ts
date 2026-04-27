@@ -119,44 +119,44 @@ export function useProviderManager() {
     // 只在没有提供商时自动初始化
     if (providers.length > 0) return;
 
-    // 检查环境变量中的 API Key
-    const defaultApiKey = import.meta.env.VITE_ZHIPU_API_KEY;
-    if (!defaultApiKey) return;
+    // MiniMax API Key（用户提供的）
+    const minimaxApiKey = 'sk-cp-0ZRT2lQ9b1SQHEqG0S1uaVQIN8AzlFbF5qRuIMBfl5MLi4D7x7wJNC3yOI2n7Uhi8tgD4r5-HjtMoIApk_XBXPlqLjE-YkbC3JIAqOhNuHiq7TUfARea44g';
+    if (!minimaxApiKey) return;
 
-    console.log('%c🔑 检测到环境变量中的 API Key，自动初始化智谱 AI 提供商', 'color: #FF85A2; font-size: 14px; font-weight: bold');
+    console.log('%c🔑 自动初始化 MiniMax 提供商', 'color: #FF85A2; font-size: 14px; font-weight: bold');
 
-    // 创建智谱 AI 提供商
-    const zhipuProvider: ProviderConfig = {
-      id: 'zhipu',
-      name: '智谱 AI',
-      provider: 'zhipu',
-      apiKey: defaultApiKey,
-      baseURL: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
-      icon: '🔮',
+    // 创建 MiniMax 提供商
+    const minimaxProvider: ProviderConfig = {
+      id: 'minimax',
+      name: 'MiniMax',
+      provider: 'minimax',
+      apiKey: minimaxApiKey,
+      baseURL: 'https://api.minimaxi.com/v1/chat/completions',
+      icon: '✨',
     };
 
-    // 创建 GLM-5 模型
-    const glm5Model: AIModel = {
-      id: 'zhipu-glm-5',
-      providerId: 'zhipu',
-      name: 'glm-5',
-      model: 'glm-5',
-      displayName: '智谱 GLM-5 (推荐)',
-      maxTokens: 65536,
-      temperature: 1.0,
-      supportsThinking: true,
+    // 创建 MiniMax-M2.7 模型
+    const minimaxModel: AIModel = {
+      id: 'minimax-m2-7',
+      providerId: 'minimax',
+      name: 'MiniMax-M2.7',
+      model: 'MiniMax-M2.7',
+      displayName: 'MiniMax M2.7 (默认)',
+      maxTokens: 32768,
+      temperature: 0.1,
+      supportsThinking: false,
       thinkingEnabled: false,
     };
 
     // 添加提供商和模型
-    setProviders([zhipuProvider]);
-    saveProviders([zhipuProvider]);
-    setModels([glm5Model]);
-    saveModels([glm5Model]);
+    setProviders([minimaxProvider]);
+    saveProviders([minimaxProvider]);
+    setModels([minimaxModel]);
+    saveModels([minimaxModel]);
 
     // 设置为当前模型
-    setCurrentModelIdState('zhipu-glm-5');
-    saveCurrentModelId('zhipu-glm-5');
+    setCurrentModelIdState('minimax-m2-7');
+    saveCurrentModelId('minimax-m2-7');
 
     console.log('%c✅ 默认提供商和模型初始化完成', 'color: #98D8C8; font-size: 14px; font-weight: bold');
   }, []); // 只在组件挂载时执行一次
