@@ -52,8 +52,12 @@ function createInitialQueryChatModalState(): QueryChatModalState {
   };
 }
 
-function normalizeAiAnswer(answer: string): string {
-  return answer.replace(/\\\$/g, '$').replace(/\\\(/g, '(').replace(/\\\)/g, ')').trim();
+/** 将 LaTeX 的 \\(...\\)、\\[...\\] 转为 remark-math 的 $/$$，勿再 strip \\(|\\)（会破坏公式）；MiniMax 等常输出 \\(...\\) 而非 $ */
+function prepareMathForMarkdown(raw: string): string {
+  let t = raw.replace(/\\\$/g, '$');
+  t = t.replace(/\\\[([\s\S]*?)\\\]/g, (_, b) => `$$\n${b.trim()}\n$$`);
+  t = t.replace(/\\\(([\s\S]*?)\\\)/g, (_, b) => `$${b}$`);
+  return t.trim();
 }
 
 function getQueryActionIcon(actionId: string) {
@@ -397,7 +401,7 @@ export function ConceptBreakdownPage() {
                   {msg.role === 'assistant' ? (
                     <div>
                       <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-                        {normalizeAiAnswer(msg.content)}
+                        {prepareMathForMarkdown(msg.content)}
                       </ReactMarkdown>
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="mt-2 rounded-lg border border-pink-100 bg-pink-50/40 p-2">
