@@ -5,7 +5,7 @@
 /**
  * AI 提供商类型
  */
-export type AIProvider = 'zhipu' | 'openai' | 'anthropic' | 'deepseek' | 'aihubmix' | 'custom';
+export type AIProvider = 'zhipu' | 'openai' | 'anthropic' | 'deepseek' | 'aihubmix' | 'minimax' | 'custom';
 
 /**
  * 提供商配置
@@ -72,6 +72,13 @@ export const PREDEFINED_PROVIDERS: Record<string, Omit<ProviderConfig, 'apiKey'>
     provider: 'aihubmix',
     baseURL: 'https://api.aihubmix.com/v1/chat/completions',
     icon: '🌟',
+  },
+  'minimax': {
+    id: 'minimax',
+    name: 'MiniMax',
+    provider: 'minimax',
+    baseURL: 'https://api.minimax.io/v1/chat/completions',
+    icon: '✨',
   },
   'custom': {
     id: 'custom',
@@ -320,6 +327,44 @@ export const PREDEFINED_MODELS: Record<string, Omit<AIModel, 'apiKey'>> = {
     maxTokens: 8192,
     temperature: 0.7,
   },
+
+  // MiniMax（OpenAI 兼容接口，见 https://platform.minimax.io/docs/api-reference/text-openai-api ）
+  'minimax-m2-7': {
+    id: 'minimax-m2-7',
+    providerId: 'minimax',
+    name: 'MiniMax-M2.7',
+    model: 'MiniMax-M2.7',
+    displayName: 'MiniMax M2.7 (推荐)',
+    maxTokens: 128000,
+    temperature: 0.7,
+  },
+  'minimax-m2-7-highspeed': {
+    id: 'minimax-m2-7-highspeed',
+    providerId: 'minimax',
+    name: 'MiniMax-M2.7-highspeed',
+    model: 'MiniMax-M2.7-highspeed',
+    displayName: 'MiniMax M2.7 Highspeed',
+    maxTokens: 128000,
+    temperature: 0.7,
+  },
+  'minimax-m2-5': {
+    id: 'minimax-m2-5',
+    providerId: 'minimax',
+    name: 'MiniMax-M2.5',
+    model: 'MiniMax-M2.5',
+    displayName: 'MiniMax M2.5',
+    maxTokens: 128000,
+    temperature: 0.7,
+  },
+  'minimax-m2': {
+    id: 'minimax-m2',
+    providerId: 'minimax',
+    name: 'MiniMax-M2',
+    model: 'MiniMax-M2',
+    displayName: 'MiniMax M2',
+    maxTokens: 128000,
+    temperature: 0.7,
+  },
 };
 
 /**
@@ -331,6 +376,7 @@ export const PROVIDER_NAMES: Record<AIProvider, string> = {
   anthropic: 'Anthropic',
   deepseek: 'DeepSeek',
   aihubmix: 'Aihubmix',
+  minimax: 'MiniMax',
   custom: '自定义',
 };
 
@@ -343,5 +389,6 @@ export const PROVIDER_ICONS: Record<AIProvider, string> = {
   anthropic: '🧠',
   deepseek: '🔬',
   aihubmix: '🌟',
+  minimax: '✨',
   custom: '⚙️',
 };

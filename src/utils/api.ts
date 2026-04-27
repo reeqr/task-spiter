@@ -197,6 +197,9 @@ function buildHeaders(model: ModelConfig): Record<string, string> {
     case 'aihubmix':
       headers['Authorization'] = `Bearer ${model.apiKey}`;
       break;
+    case 'minimax':
+      headers['Authorization'] = `Bearer ${model.apiKey}`;
+      break;
   }
 
   return headers;
