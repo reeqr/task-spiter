@@ -3,8 +3,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { Card, Typography, message, Button, Space, Modal, Empty, Input } from 'antd';
-import { ReloadOutlined, BulbOutlined, QuestionCircleOutlined, LoadingOutlined, SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Typography, message, Button, Space, Modal, Empty, Input, Tag } from 'antd';
+import { ReloadOutlined, BulbOutlined, QuestionCircleOutlined, LoadingOutlined, SearchOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -358,18 +358,18 @@ export function ConceptBreakdownPage() {
               <Text type="secondary" className="text-xs">从最近选择:</Text>
               <div className="flex flex-wrap gap-2 mt-2">
                 {history.slice(0, 5).map((item) => (
-                  <Button
+                  <Tag
                     key={item.id}
-                    size="small"
+                    closable
+                    onClose={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      handleDeleteHistory(e, item.id);
+                    }}
                     onClick={() => handleLoadHistory(item.breakdown)}
-                    className="!rounded-full !border-pink-200"
+                    className="cursor-pointer !rounded-full !border-pink-200 !px-3 !py-1"
                   >
                     {item.concept}
-                    <CloseCircleOutlined
-                      className="ml-1 text-pink-300 hover:text-pink-500"
-                      onClick={(e) => handleDeleteHistory(e, item.id)}
-                    />
-                  </Button>
+                  </Tag>
                 ))}
               </div>
             </div>

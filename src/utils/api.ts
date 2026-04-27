@@ -273,7 +273,7 @@ function buildRequestBody(model: ModelConfig, prompt: string, options: RequestBu
   const body: Record<string, unknown> = {
     model: model.model,
     max_tokens: adjustedMaxTokens,
-    temperature: FIXED_MODEL_TEMPERATURE,
+    temperature: model.temperature ?? FIXED_MODEL_TEMPERATURE,
   };
 
   if (model.provider === 'anthropic') {
