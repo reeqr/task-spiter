@@ -80,6 +80,8 @@ export function ConceptBreakdownPage() {
   const queryRequestIdRef = useRef(0);
   const queryAbortRef = useRef<AbortController | null>(null);
   const [queryAutoScroll, setQueryAutoScroll] = useState(true);
+  // 追踪是否有活跃的拆解操作
+  const breakdownRef = useRef(false);
 
   const enabledQueryActions = getEnabledQueryActions(loadPromptTemplates());
   const getActionById = (actionId: string) => enabledQueryActions.find((item) => item.id === actionId) || enabledQueryActions[0];
@@ -108,15 +110,24 @@ export function ConceptBreakdownPage() {
     cancelQueryStream();
   }, []);
 
+  // 当 result 变化且不在拆解过程中时，自动保存到历史
+  useEffect(() => {
+    if (result && !breakdownRef.current) {
+      saveToHistory(result);
+    }
+  }, [result, saveToHistory]);
+
   const handleBreakdown = async (concept: string) => {
     try {
+      breakdownRef.current = true;
       setLastConcept(concept);
       const breakdown = await breakdownConcept(concept);
       setResult(breakdown);
-      saveToHistory(breakdown);
       message.success('拆解完成！');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '拆解失败，请重试');
+    } finally {
+      breakdownRef.current = false;
     }
   };
 
