@@ -62,6 +62,7 @@ const WEB_SEARCH_PROVIDER_SUPPORT: Partial<Record<AIProvider, boolean>> = {
 };
 const STREAM_PROVIDER_SUPPORT: Partial<Record<AIProvider, boolean>> = {
   zhipu: true,
+  minimax: true, // OpenAI 兼容 /v1/chat/completions 支持 stream
 };
 
 const runtimeUnsupportedProviders = new Set<AIProvider>();
