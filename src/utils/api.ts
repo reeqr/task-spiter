@@ -290,6 +290,8 @@ function buildRequestBody(model: ModelConfig, prompt: string, options: RequestBu
   } else {
     // OpenAI 格式（DeepSeek、Aihubmix 也兼容）
     body.messages = [{ role: 'user', content: prompt }];
+    // MiniMax M2：reasoning_split 为 true 时思考在 reasoning_details，content 为正式回答（见官方 OpenAI 兼容文档）
+    if (model.provider === 'minimax') (body as Record<string, unknown>).reasoning_split = true;
   }
 
   const searchConfig = options.webSearchConfig || getWebSearchConfig();
@@ -381,9 +383,22 @@ function extractSourcesFromResponse(data: unknown): QuerySource[] {
   return [];
 }
 
+/** 去掉 MiniMax 仍可能混在 content 里的思考块（与 reasoning_split 搭配使用） */
+function stripMinimaxThinkingInText(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/<think>[\s\S]*?<\/redacted_thinking>/gi, '')
+    .replace(/<think>[\s\S]*/gi, '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<think>[\s\S]*/gi, '')
+    .trim();
+}
+
 function extractContentFromResponse(model: ModelConfig, data: unknown): string {
   if (model.provider === 'anthropic') return String(getNestedValue(data, ['content', 0, 'text']) || '').trim();
-  return String(getNestedValue(data, ['choices', 0, 'message', 'content']) || '').trim();
+  let text = String(getNestedValue(data, ['choices', 0, 'message', 'content']) || '').trim();
+  if (model.provider === 'minimax') text = stripMinimaxThinkingInText(text);
+  return text;
 }
 
 async function requestWithOptionalWebSearch(
@@ -537,9 +552,11 @@ async function requestWithOptionalWebSearchStream(
     }
   }
 
-  const content = await consumeStreamedText(response, handlers, options.signal);
+  let content = await consumeStreamedText(response, handlers, options.signal);
+  content = String(content || '').trim();
+  if (model.provider === 'minimax') content = stripMinimaxThinkingInText(content);
   return {
-    content: String(content || '').trim(),
+    content,
     sources: [],
     webSearchAttempted,
     webSearchFallback,
