@@ -136,15 +136,25 @@ export function ConceptBreakdownPage() {
   };
 
   const handleLoadHistory = (breakdown: ConceptBreakdown) => {
+    breakdownRef.current = true;
     setResult(breakdown);
     setLastConcept(breakdown.concept);
     message.success('已加载历史拆解结果');
+    // 短暂延迟后重置，防止触发自动保存
+    setTimeout(() => {
+      breakdownRef.current = false;
+    }, 100);
   };
 
   const handleDeleteHistory = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    // 删除前设置标记，防止触发自动保存
+    breakdownRef.current = true;
     deleteFromHistory(id);
     message.success('已删除历史记录');
+    setTimeout(() => {
+      breakdownRef.current = false;
+    }, 100);
   };
 
   const handleBreakdownTerm = async (termId: string) => {
