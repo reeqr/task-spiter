@@ -114,11 +114,8 @@ export function useProviderManager() {
     }
   }, [currentModelId, models, providers]);
 
-  // 自动初始化默认提供商（如果环境变量中有 API Key 且没有提供商）
+  // 自动初始化默认提供商（强制使用 MiniMax）
   useEffect(() => {
-    // 只在没有提供商时自动初始化
-    if (providers.length > 0) return;
-
     // MiniMax API Key（用户提供的）
     const minimaxApiKey = 'sk-cp-0ZRT2lQ9b1SQHEqG0S1uaVQIN8AzlFbF5qRuIMBfl5MLi4D7x7wJNC3yOI2n7Uhi8tgD4r5-HjtMoIApk_XBXPlqLjE-YkbC3JIAqOhNuHiq7TUfARea44g';
     if (!minimaxApiKey) return;
@@ -148,7 +145,7 @@ export function useProviderManager() {
       thinkingEnabled: false,
     };
 
-    // 添加提供商和模型
+    // 强制使用 MiniMax 作为提供商和模型
     setProviders([minimaxProvider]);
     saveProviders([minimaxProvider]);
     setModels([minimaxModel]);
