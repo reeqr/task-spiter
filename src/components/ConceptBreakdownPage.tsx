@@ -367,7 +367,7 @@ export function ConceptBreakdownPage() {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <Text type="secondary" className="text-xs">从最近选择:</Text>
               <div className="flex flex-wrap gap-2 mt-2">
-                {history.slice(0, 5).map((item) => (
+                {history.map((item) => (
                   <Tag
                     key={item.id}
                     closable
