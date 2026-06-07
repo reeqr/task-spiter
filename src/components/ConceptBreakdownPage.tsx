@@ -103,7 +103,13 @@ export function ConceptBreakdownPage() {
     if (!queryModal.visible || !queryAutoScroll) return;
     const el = queryScrollRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    // 使用 requestAnimationFrame 并延迟 50ms，避免渲染未完成
+    const timer = setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    }, 50);
+    return () => clearTimeout(timer);
   }, [queryModal.messages, queryModal.visible, queryAutoScroll]);
 
   useEffect(() => () => {
@@ -303,6 +309,8 @@ export function ConceptBreakdownPage() {
     await runQueryAction({ actionId, termId: '__root__', termName: result.concept, isRoot: true });
   };
 
+  const MAX_CHAT_MESSAGES = 20;
+
   const handleQueryFollowup = async () => {
     if (!result) return;
     const followupQuestion = queryModal.input.trim();
@@ -311,7 +319,13 @@ export function ConceptBreakdownPage() {
     const requestId = ++queryRequestIdRef.current;
     const controller = new AbortController();
     queryAbortRef.current = controller;
-    const history = queryModal.messages;
+
+    // 限制消息数量：保留最近 20 条，超出时移除最早的消息对
+    let history = queryModal.messages;
+    if (history.length >= MAX_CHAT_MESSAGES) {
+      history = history.slice(history.length - MAX_CHAT_MESSAGES);
+    }
+
     setQueryModal((prev) => ({
       ...prev,
       messages: [...prev.messages, { role: 'user', content: followupQuestion }, { role: 'assistant', content: '' }],
