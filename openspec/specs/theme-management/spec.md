@@ -1,5 +1,5 @@
 ### Requirement: 预置主题集合
-系统 SHALL 提供 3 套预置主题：二次元粉色（anime）、暗夜玻璃灰（dark）、清新自然浅绿（nature）。每套主题 SHALL 包含唯一 ID、展示名称、代表 emoji/图标、Ant Design token 配置和 CSS 变量配置。
+系统 SHALL 提供 2 套预置主题：二次元粉色（anime）、清新自然浅绿（nature）。每套主题 SHALL 包含唯一 ID、展示名称、代表 emoji/图标、Ant Design token 配置和 CSS 变量配置。
 
 #### Scenario: 主题配置完整性
 - **WHEN** 应用加载主题配置模块

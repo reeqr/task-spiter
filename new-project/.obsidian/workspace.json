@@ -1,0 +1,200 @@
+{
+  "main": {
+    "id": "c95961e3a0bcb8c4",
+    "type": "split",
+    "children": [
+      {
+        "id": "bcf595bf125002cb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "aba3b9b58619a468",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "公文写作与处理期末复习整理.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "公文写作与处理期末复习整理"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "204bce1c9190c06b",
+    "type": "split",
+    "children": [
+      {
+        "id": "eadbe84f42d088fd",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0a1d5341daaab7bd",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "cc25967f35fd3f0e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "a901fec545c32c78",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "e830ccac1751b37a",
+    "type": "split",
+    "children": [
+      {
+        "id": "0de25339762fcac8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "0fec7afd33492475",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "公文写作与处理期末复习整理.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "公文写作与处理期末复习整理 的反向链接列表"
+            }
+          },
+          {
+            "id": "4878ad69d21a412e",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "公文写作与处理期末复习整理.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "公文写作与处理期末复习整理 的出链列表"
+            }
+          },
+          {
+            "id": "3f0afa7aa1c7e1b9",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "39d39e7bc7f4fad6",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "d4b95ea76e20b1a6",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "公文写作与处理期末复习整理.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "公文写作与处理期末复习整理 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "aba3b9b58619a468",
+  "lastOpenFiles": [
+    "output/~$写作与处理-开卷考试整理版.docx",
+    "output/公文写作与处理-开卷考试整理版.docx",
+    "tmp_exam_pack/《公文写作与处理（卫生行政执法文书部分）》期末考试参考课件.pdf.txt",
+    "tmp_exam_pack/《公文写作与处理（卫生行政执法文书部分）》期末考试参考课件.txt",
+    "tmp_exam_pack/第八章 商洽、纪要类公文.ppt.txt",
+    "tmp_exam_pack/第八章 商洽、纪要类公文.ppt.plist",
+    "tmp_exam_pack/第二章公文格式.ppt.txt",
+    "tmp_exam_pack/第二章公文格式.ppt.plist",
+    "tmp_exam_pack/第六章  意见.ppt.txt",
+    "tmp_exam_pack/第六章  意见.ppt.plist",
+    "tmp_exam_pack/第六章 通知 第七章 通报.ppt.txt"
+  ]
+}
